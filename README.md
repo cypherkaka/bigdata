@@ -1,2 +1,2 @@
 # BigData
-Contains informationrelated to BigData frameworks.
+Contains information related to BigData frameworks.

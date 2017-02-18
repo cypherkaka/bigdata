@@ -1,0 +1,4 @@
+## --------- Spark Details --------- ##
+
+# Run spark shell in Yarn context
+spark-shell --master yarn

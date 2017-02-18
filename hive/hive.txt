@@ -1,0 +1,28 @@
+## --------- Hive Details --------- ##
+
+# Hive default database
+hadoop fs -ls /user/hive/warehouse
+
+# Create db
+create database sqoop_import;
+
+# List db with hadoop command[dfs = hadoop fs]
+dfs -ls /user/hive/warehouse
+
+# Show db
+show databases;
+
+# Switch db
+use sqoop_import;
+
+# List tables
+show tables;
+
+# View properties
+describe formatted departments;
+
+# Check size of tables
+dfs -du -s -h /user/hive/warehouse/order_items;
+
+# Table details
+describe formatted departments;

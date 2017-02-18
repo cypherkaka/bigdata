@@ -1,0 +1,26 @@
+## --------- Mysql Details [default password: cloudera] --------- ##
+
+# Connect to mysql
+- mysql -u root -p
+
+# Show databases
+show databases;
+
+# Select databases
+use <db name>;
+use retain_db;
+
+# Show tables
+show tables;
+
+# Connect mysql using sqoop
+mysql -u retail_dba -p
+
+# Connect and verify Mysql
+mysql -u retail_dba -p
+password: cloudera
+
+use retail_db;
+show tables;
+
+

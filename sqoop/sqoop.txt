@@ -1,0 +1,166 @@
+## --------- Sqoop Details --------- ##
+
+#Ref:
+https://sqoop.apache.org/docs/1.99.7/index.html
+https://sqoop.apache.org/docs/1.4.4/SqoopUserGuide.html
+
+
+#Summary
+Apache Sqoop is a tool designed for efficiently transferring data betweeen structured, semi-structured and unstructured data sources.
+Relational databases are examples of structured data sources with well defined schema for the data they store.
+Cassandra, Hbase are examples of semi-structured data sources and HDFS is an example of unstructured data source that Sqoop can support.
+
+# Verify VM name
+ping quickstart.cloudera
+
+# List databases
+sqoop list-databases \
+ --connect "jdbc:mysql://quickstart.cloudera:3306" \
+ --username retail_dba \
+ --password cloudera
+
+# List tables
+sqoop list-tables \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera
+
+# Validate permission by executing SQL
+sqoop eval \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --query "select * from departments"
+
+# Import all tables to HDFS
+sqoop import-all-tables \
+ -m 12 \
+ --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+ --username retail_dba \
+ --password cloudera \
+ --warehouse-dir=/user/cloudera/sqoop_import
+
+# Import single table
+sqoop import \
+ --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+ --username retail_dba \
+ --password cloudera \
+ --table departments\
+ --target-dir /user/cloudera/departments
+
+# Import single table with boundry query
+sqoop import \
+ --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+ --username retail_dba \
+ --password cloudera \
+ --table departments\
+ --target-dir /user/cloudera/departments \
+ --boundary-query "select 2,8 from departments limit 1"
+
+# Import with custom query [must provide $CONDITIONS and --split-by]
+sqoop import \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --query 'select * from orders join order_items on orders.order_id = order_items.order_item_order_id where $CONDITIONS' \
+  --target-dir /user/cloudera/order_join \
+  --split-by order_id \
+  --num-mappers 4
+
+# Import single existing table into Hive
+sqoop import \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --table departments \
+  --hive-home /user/hive/warehouse \
+  --hive-import \
+  --hive-overwrite \
+  --hive-table sqoop_import.departments
+
+# Import ino new Hive table
+sqoop import \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --table departments \
+  --hive-home /user/hive/warehouse \
+  --hive-import \
+  --hive-overwrite \
+  --hive-table sqoop_import.departments_created_onthefly \
+  --create-hive-table
+
+# Import table with enclosed char
+# [--enclosed-by CHAR will add given CHAR before and after data]
+# [--fields-terminated-by CHAR will replace default delimiters COMA to given CHAR]
+# [--lines-terminated-by CHAR will replace \n with given CHAR]
+sqoop import \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --table departments \
+  --target-dir /user/cloudera/sqoop_import/departments_enclosedby \
+  --enclosed-by \" \
+  --fields-terminated-by \| \
+  --lines-terminated-by \:
+
+# Import in hive with create table and replace NULL value
+sqoop import \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --table departments_null_test \
+  --hive-home /user/hive/warehouse \
+  --hive-import \
+  --hive-table departments_null_test \
+  --create-hive-table \
+  --outdir java_files \
+  --null-string NIL_VAL \
+  --null-non-string NIL_NON_VAL
+
+# Import all tables to Hive with compress
+sqoop import-all-tables \
+  --num-mappers 1 \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --hive-import \
+  --hive-overwrite \
+  --create-hive-table \
+  --compress \
+  --compression-codec org.apache.hadoop.io.compress.SnappyCodec \
+  --outdir java_files
+
+# Import all tables to Hive specific db
+sqoop import-all-tables \
+  --num-mappers 1 \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --hive-import \
+  --hive-overwrite \
+  --create-hive-table \
+  --hive-database sqoop_import
+
+# Export single table
+sqoop export \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --table order_items_export \
+  --export-dir /user/cloudera/sqoop_import/order_items \
+  --batch \
+  --outdir java_files
+
+# Export single table with updated value
+# [in this case --export-dir already contains export.csv file with updated recoeds ]
+  sqoop export \
+    --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+    --username retail_dba \
+    --password cloudera \
+    --table departments \
+    --export-dir /user/cloudera/sqoop_import/departments_export \
+    --batch \
+    --outdir java_files \
+    --update-key department_id  \
+    --update-mode allowinsert

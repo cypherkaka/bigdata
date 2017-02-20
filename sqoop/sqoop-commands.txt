@@ -1,5 +1,4 @@
 ## --------- Sqoop Details --------- ##
-
 #Ref:
 https://sqoop.apache.org/docs/1.99.7/index.html
 https://sqoop.apache.org/docs/1.4.4/SqoopUserGuide.html
@@ -141,6 +140,24 @@ sqoop import-all-tables \
   --hive-overwrite \
   --create-hive-table \
   --hive-database sqoop_import
+
+# Import as sequence file
+sqoop import \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username retail_dba \
+  --password cloudera \
+  --table departments \
+  --as-sequencefile \
+  --target-dir /user/cloudera/departments
+
+# Import as avro datafile
+  sqoop import \
+    --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+    --username retail_dba \
+    --password cloudera \
+    --table departments \
+    --as-avrodatafile \
+    --target-dir /user/cloudera/departments
 
 # Export single table
 sqoop export \

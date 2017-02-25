@@ -20,3 +20,9 @@ telnet localhost 44444
 # After telnet start, type any message and it will be captured by agent
 
 #Explore documentaion for Sources, Sinks, Channels
+
+# Script to generate logs
+start_logs
+
+# Script for stop generating logs
+stop_logs

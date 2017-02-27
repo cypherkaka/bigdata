@@ -2,3 +2,18 @@
 
 # Run spark shell in Yarn context
 spark-shell --master yarn
+
+# Spark with scala context[DEFAULT]
+spark-shell
+
+# Spark with python context
+pyspark
+
+# To Create SQL context with Hive support, Create soft link for hive Context
+sudo ln -s /etc/hive/conf/hive-site.xml /etc/spark/conf/hive-site.xml
+
+# After starting spark-shell we can see "Output: SQL context available as sqlContext."
+
+# Execute Sql query
+sqlContext.sql("select * from departments").collect().foreach(println)
+sqlContext.sql("select * from departments").count()

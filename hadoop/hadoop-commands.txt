@@ -1,0 +1,10 @@
+## --------- Hadoop Details --------- ##
+
+# Help of perticular command
+hadoop fs -help <command>
+hadoop fs -help ls
+
+# Copy files to HDFS
+-copyFromLocal  : copy from local FS to HDFS
+-put  : copy from local FS to HDFS
+-cp   : copy file from one hdfs locatoin to another

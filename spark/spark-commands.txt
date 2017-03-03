@@ -6,14 +6,40 @@ spark-shell --master yarn
 # Spark with scala context[DEFAULT]
 spark-shell
 
-# Spark with python context
+# Spark with python context in YARN mode
 pyspark
+
+# Spark with python context in local mode
+pyspark --master local
 
 # To Create SQL context with Hive support, Create soft link for hive Context
 sudo ln -s /etc/hive/conf/hive-site.xml /etc/spark/conf/hive-site.xml
 
 # After starting spark-shell we can see "Output: SQL context available as sqlContext."
 
-# Execute Sql query
+# Execute Sql query in Spark Context
 sqlContext.sql("select * from departments").collect().foreach(println)
 sqlContext.sql("select * from departments").count()
+
+# To launch SQL Context
+from pyspark.sql import SQLContext
+
+# To launch Hive Context
+from pyspark.sql import HiveContext
+
+# Execute Sql query in pyspark context
+from pyspark.sql import HiveContext
+sqlContext = HiveContext(sc)
+depts = sqlContext.sql("select * from departments")
+
+# Search mysql connector
+sudo find / -name "mysql-connector*.jar" | grep "/usr/share"
+
+# Pyspark: Connect using mysql driver
+pyspark --driver-class-path /usr/share/java/mysql-connector-java.jar
+from pyspark.sql import SQLContext
+sqlContext = SQLContext(sc)
+jdbcurl = "jdbc:mysql://quickstart.cloudera:3306/retail_db?user=retail_dba&password=cloudera"
+df = sqlContext.load(source="jdbc", url=jdbcurl, dbtable="departments")
+for rec in df.collect():
+  print(rec)

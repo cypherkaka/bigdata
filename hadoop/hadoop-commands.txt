@@ -8,3 +8,15 @@ hadoop fs -help ls
 -copyFromLocal  : copy from local FS to HDFS
 -put  : copy from local FS to HDFS
 -cp   : copy file from one hdfs locatoin to another
+
+
+# list file based on fully qualified path
+hadoop fs -ls hdfs://quickstart.cloudera:8020/user/cloudera/sqoop_import/departments
+
+# verify hadoop port
+view /etc/hadoop/conf/core-site.xml
+
+<property>
+  <name>fs.defaultFS</name>
+  <value>hdfs://quickstart.cloudera:8020</value>
+</property>

@@ -64,3 +64,33 @@ spark-submit --master yarn saveFile.py
 data = sc.textFile("file:///home/cloudera/orders.java")
 for line in data.collect():
   print(line)
+
+# Write and read SequenceFile
+dataRDD = sc.textFile("/user/cloudera/sqoop_import/departments")
+for line in dataRDD.collect():
+  print(line)
+
+dataRDD.map(lambda x: tuple(x.split(",", 1))).saveAsSequenceFile("/user/cloudera/pyspark/departmentsAsSequenceFile")
+data = sc.sequenceFile("/user/cloudera/pyspark/departmentsAsSequenceFile")
+for record in data.collect():
+  print(record)
+
+data = sc.sequenceFile("/user/cloudera/pyspark/departmentsAsSequenceFile", "org.apache.hadoop.io.IntWritable", "org.apache.hadoop.io.Text")
+for record in data.collect():
+    print(record)
+
+# Read data from HiveContext
+from pyspark.sql import HiveContext
+sqlContext = HiveContext(sc)
+for row in sqlContext.sql("select * from departments").collect():
+  print(row)
+
+# Read and write JSon files
+from pyspark import SQLContext
+sqlContext = SQLContext(sc)
+departmentsJson = sqlContext.jsonFile("/user/cloudera/pyspark/departments.json")
+departmentsJson.registerTempTable("djson")
+for row in sqlContext.sql("select * from djson").collect():
+  print(row)
+
+sqlContext.sql("select * from djson").toJSON().saveAsTextFile("/user/cloudera/pyspark/departmentsJson")

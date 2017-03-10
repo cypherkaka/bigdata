@@ -94,3 +94,12 @@ for row in sqlContext.sql("select * from djson").collect():
   print(row)
 
 sqlContext.sql("select * from djson").toJSON().saveAsTextFile("/user/cloudera/pyspark/departmentsJson")
+
+
+# Word count using Transformation[flatMap, map] and Action[reduceByKey]
+data = sc.textFile("/user/cloudera/wordcount.txt")
+dataFlatMap = data.flatMap(lambda x: x.split(" "))
+dataMap = dataFlatMap.map(lambda x: (x,1))
+wordCount = dataMap.reduceByKey(lambda x,y: x+y)
+for i in wordCount.collect():
+  print(i)

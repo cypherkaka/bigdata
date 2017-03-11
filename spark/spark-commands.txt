@@ -102,3 +102,40 @@ dataMap = dataFlatMap.map(lambda x: (x,1))
 wordCount = dataMap.reduceByKey(lambda x,y: x+y)
 for i in wordCount.collect():
   print(i)
+
+
+# Joining Data Sets using Transformation --------------------------------
+[Problem: Get the revenue and number of orders from order_items on daily bases]
+[Info: [] means array of items and () means individual tuple]
+
+ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
+
+ordersParsedRDD = ordersRDD.map(lambda rec: (int(rec.split(",")[0]), rec))
+orderItemsParsedRDD = orderItemsRDD.map(lambda rec: (int(rec.split(",")[0]), rec))
+
+// smallerTable.join(largetTable)
+ordersJoinOrderItems = orderItemsParsedRDD.join(ordersParsedRDD)
+
+// (4, (u'4,2,403,1,129.99,129.99', u'4,2013-07-25 00:00:00.0,8827,CLOSED'))
+// Create map[date,subTotal]
+revenuePerOrderPerDay = ordersJoinOrderItems.map(lambda t: (t[1][1].split(",")[1], float(t[1][0].split(",")[4])))
+
+// Get order count per day
+ordersPerDay = ordersJoinOrderItems.map(lambda t: t[1][1].split(",")[1] + "," + str(t[0])).distinct()
+ordersPerDayParsedRDD = ordersPerDay.map(lambda t: (t.split(",")[0],1))
+
+/*
+reduceByKey: Expect that the input RDD contains tuples of the form (<key>,<value>).
+Create a new RDD containing a tuple for each unique value of <key> in the input,
+where the value in the second position of the tuple is created by applying the supplied lambda function to the <value>s
+with the matching <key> in the input RDD
+*/
+totalOrdersPerDay = ordersPerDayParsedRDD.reduceByKey(lambda x,y: x+y)
+totalRevenuePerDay = revenuePerOrderPerDay.reduceByKey(lambda ord1, ord2: ord1+ord2)
+totalOrdersAndTotalRevenuePerDay = totalOrdersPerDay.join(totalRevenuePerDay)
+
+for i in totalOrdersAndTotalRevenuePerDay.sortByKey().collect():
+  print i
+
+# ------ ------------ ------------ ----------- ----------- -------------------

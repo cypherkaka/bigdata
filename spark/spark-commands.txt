@@ -176,3 +176,50 @@ on o.order_id = oi.order_item_order_id \
 group by o.order_date order by o.order_date")
 
 for data in joinAggData.collect(): print data
+
+# Calculate aggregate statistics(avg, sum, min, max)
+
+# Calculate Total revenue
+#1 Find column index, which is 4th (order_item_subtotal)
+hive> describe order_items;
+OK
+order_item_id       	int
+order_item_order_id 	int
+order_item_product_id	int
+order_item_quantity 	tinyint
+order_item_subtotal 	double
+order_item_product_price	double
+
+orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
+orderItemsMap = orderItemsRDD.map(lambda rec: float(rec.split(",")[4]))
+// reduce() will will do total
+orderItemsMap.reduce(lambda rev1, rev2: rev1+rev2)
+
+# Find max price of produce
+# Find column index which is 4th(product_price)
+hive> describe products;
+OK
+product_id          	int
+product_category_id 	int
+product_name        	string
+product_description 	string
+product_price       	double
+product_image       	string
+
+productsRDD = sc.textFile("/user/cloudera/sqoop_import/products")
+productsMap = productsRDD.map(lambda rec: rec)
+productsMap.reduce(lambda rec1, rec2: (rec1 if(float(rec1.split(",")[4] >= float(rec2.split(",")[4])) else rec2))
+
+---------- Troubleshoot if any record having ',' --------------
+[if any record is having ',' in name, we have to delete that recoed from hadoop file and reupload file]
+login into mysql and find records
+select * from products where product_name like '%,%'
+hadoop fs -get /location/of file
+nano part***
+ctrl+w
+ctrl+t
+enter line number
+delete and save file
+re-upload file to hadoop
+hadoop fs -put -f <part***> <currenct locatoin>
+---------- Troubleshoot if any record having ',' --------------

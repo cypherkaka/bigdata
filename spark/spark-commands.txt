@@ -250,7 +250,20 @@ for i in ordersMap.countByKey().items(): print i
 # - 2: reduceByKey()
 # - 3: aggregateByKey()
 # - 4: combineByKey()
-
 """
+ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+ordersMap = ordersRDD.map(lambda rec: (rec.split(",")[3],1))
+totalOrdersByStatus = ordersMap.groupByKey().map(lambda rec: (rec[0], sum(rec[1]))) 
+for i in totalOrdersByStatus.collect(): print i
 
+totalOrdersByStatusWithReduceByKey = ordersMap.reduceByKey(lambda acc, val: acc+val)
+for i in totalOrdersByStatusWithReduceByKey.collect(): print i
 
+# aggregateByKey() used for custom combiner and reducer with initial value (in this case 0)
+ordersMap = ordersRDD.map(lambda rec: (rec.split(",")[3], rec))
+totalOrdersByStatusWithAggregateByKey = ordersMap.aggregateByKey(0, lambda acc, val: acc+1, lambda acc, val: acc+val)
+for i in totalOrdersByStatusWithAggregateByKey.collect(): print i
+
+# combineByKey() same as aggregateByKey() but we can also provide custom incremental argument 
+totalOrdersByStatusWithCombineByKey = ordersMap.combineByKey(lambda val: 1, lambda acc, val: acc+1, lambda acc, val: acc+val)
+for i in totalOrdersByStatusWithCombineByKey.collect(): print i

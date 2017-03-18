@@ -223,3 +223,34 @@ delete and save file
 re-upload file to hadoop
 hadoop fs -put -f <part***> <currenct locatoin>
 ---------- Troubleshoot if any record having ',' --------------
+
+"""
+# Compute average from totalrevenue 
+# - calculate total revenue
+# - select distinct orders 
+""" 
+orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
+totalRevenue = orderItemsRDD.map(lambda rec: float(rec.split(",")[4])).reduce(lambda val1, val2: val1+val2)
+distinctOrders = orderItemsRDD.map(lambda rec: rec.split(",")[1]).distinct().count()
+totalRevenue/distinctOrders
+
+"""
+# Operations by key: calculate total orders for order status     
+# - countByKey() will give unique count for each key (in this case ORDER_STATUS) 
+"""
+ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+# must provide 0 as tuple and to create map like <'ORDER_STATUS', 0>
+ordersMap = ordersRDD.map(lambda rec: (rec.split(",")[3],0))
+for i in ordersMap.countByKey().items(): print i
+
+
+"""
+# Get count by using tranformation(4 ways): 
+# - 1: groupByKey()  
+# - 2: reduceByKey()
+# - 3: aggregateByKey()
+# - 4: combineByKey()
+
+"""
+
+

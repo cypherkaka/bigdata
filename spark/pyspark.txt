@@ -382,3 +382,51 @@ group by o.order_date, o.order_customer_id) q \
 group by q.order_date) q2 \
 on q1.order_date = q2.order_date and q1.order_item_subtotal = q2.order_item_subtotal \
 order by q1.order_date")
+
+"""
+# Filtering Data
+# .filter() will filterout records that does not match given criteria
+"""
+
+ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+
+# Print all distinct order status
+for i in ordersRDD.map(lambda rec: rec.split(",")[3]).distinct().collect(): print i
+
+# Print all COMPLETE orders
+for i in ordersRDD.filter(lambda line: line.split(",")[3] == "COMPLETE").take(5): print i
+
+# Print all PENDING records, PENDING may be substring
+for i in ordersRDD.filter(lambda line: "PENDING" in line.split(",")[3]).take(100): print i
+
+# Print all COMPLETE or CLOSED
+for i in ordersRDD.filter(lambda line: line.split(",")[3] == "COMPLETE" or line.split(",")[3] == "CLOSED").take(5): print i
+
+# Print all COMPLETE or CLOSED and > 5000
+for i in ordersRDD.filter(lambda line: line.split(",")[0] > 5000 and (line.split(",")[3] == "COMPLETE" or line.split(",")[3] == "CLOSED")).take(5): print i
+
+# Print all orders which are not COMPLETE
+for i in ordersRDD.filter(lambda line: line.split(",")[3] != "COMPLETE").take(5): print i
+
+"""
+# End to end problem statement
+# - Check if there are any CANCELED orders with amount greater than $1000
+# - Get only CANCELED orders
+# - Join orders and order items
+# - Generate sum(order_item_subtotal) per order
+# - Filter data which amount to greater than $1000
+"""
+ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
+
+# get map for <orderid, rec> for all CANCELED orders
+ordersParsedRDD = ordersRDD.filter(lambda rec: rec.split(",")[3] in "CANCELED").map(lambda rec: (int(rec.split(",")[0]), rec))
+
+# map<orderId, amount>
+orderItemsParsedRDD = orderItemsRDD.map(lambda rec: (int(rec.split(",")[1]), float(rec.split(",")[4])))
+
+orderItemsAgg = orderItemsParsedRDD.reduceByKey(lambda acc, val: (acc+val))
+
+ordersJoinOrderItems = orderItemsAgg.join(ordersParsedRDD)
+
+for i in ordersJoinOrderItems.filter(lambda rec: rec[1][0] >= 1000).take(5): print i

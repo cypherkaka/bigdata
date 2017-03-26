@@ -35,3 +35,20 @@ dataRDD.saveAsTextFile("hdfs://quickstart.cloudera:8022/user/cloudera/spark/depa
 dataRDD.saveAsObjectFile("hdfs://quickstart.cloudera:8022/user/cloudera/spark/departmentsObject")
 
 
+/*
+Reading and saving sequence file
+*/
+// Import below package witch include all key types like NullWritable.class 
+import org.apache.hadoop.io._
+
+val dataRDD = sc.textFile("/user/cloudera/sqoop_import/departments")
+dataRDD.collect.foreach(println)
+
+dataRDD.map(rec => (NullWritable.get(), rec)).saveAsSequenceFile("/user/cloudera/scalaspark/departmentsSeq")
+dataRDD.map(rec => (rec.split(",")(0), rec.split(",")(1))).saveAsSequenceFile("/user/cloudera/scalaspark/departmentsSeq")
+
+// reading sequence file with NullWritable as key
+sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[NullWritable], classOf[Text]).map(rec => rec.toString()).collect().foreach(println)
+
+// reading sequence file with Text as key
+sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[Text], classOf[Text]).map(rec => rec.toString()).collect().foreach(println)

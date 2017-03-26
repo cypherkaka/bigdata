@@ -449,4 +449,18 @@ for i in productsRDD.map(lambda rec: ((float(rec.split(",")[4]), int(rec.split("
 for i in productsRDD.map(lambda rec: ((float(rec.split(",")[4]), int(rec.split(",")[0])), rec)).takeOrdered(5, lambda rec: (-rec[0][0], rec[0][1])): print i
 
 
+"""
+# Get topN products by price by category
+# Get topN priced products by category
+# 
+# - Will return top prices without duplicate price
+"""
+productsRDD = sc.textFile("/user/cloudera/sqoop_import/products")
+productsMap = productsRDD.map(lambda rec: (rec.split(",")[1], rec))
+
+# For each key it will create iteratable object
+productsGroupBy = productsMap.groupByKey()
+
+# Print sorted data on price
+for i in productsGroupBy.flatMap(lambda rec: sorted(rec[1], key=lambda k: k.split(",")[4])).take(50): print i
 

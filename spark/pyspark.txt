@@ -430,3 +430,23 @@ orderItemsAgg = orderItemsParsedRDD.reduceByKey(lambda acc, val: (acc+val))
 ordersJoinOrderItems = orderItemsAgg.join(ordersParsedRDD)
 
 for i in ordersJoinOrderItems.filter(lambda rec: rec[1][0] >= 1000).take(5): print i
+
+"""
+# Global sorting and ranking
+"""
+
+productsRDD  = sc.textFile("/user/cloudera/sqoop_import/products")
+# Sort by product price(ascending)
+for i in productsRDD.map(lambda rec: (float(rec.split(",")[4]), rec)).sortByKey().collect(): print i
+
+# Sort by product price(decending)
+for i in productsRDD.map(lambda rec: (float(rec.split(",")[4]), rec)).sortByKey(False).collect(): print i
+
+# multiple key sort
+for i in productsRDD.map(lambda rec: ((float(rec.split(",")[4]), int(rec.split(",")[0])), rec)).sortByKey(False).collect(): print i
+
+# Sort price in decending order and productId in ascending order 
+for i in productsRDD.map(lambda rec: ((float(rec.split(",")[4]), int(rec.split(",")[0])), rec)).takeOrdered(5, lambda rec: (-rec[0][0], rec[0][1])): print i
+
+
+

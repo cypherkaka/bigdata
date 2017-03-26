@@ -20,7 +20,18 @@ spark-submit --class "SimpleApp" \
 --master local \
 /home/cloudera/scala-ex1/target/scala-2.10/simple-project_2.10-1.0.jar
 
+/**
+Read data from HDFS and write it back to HDFS
+**/
+val dataRDD = sc.textFile("/user/cloudera/sqoop_import/departments")
+val dataRDD = sc.textFile("hdfs://quickstart.cloudera:8022/user/cloudera/sqoop_import/departments")
+dataRDD.count()
 
+// To print each records
+dataRDD.collect.foreach(println)
 
+// Store data back to hdfs
+dataRDD.saveAsTextFile("hdfs://quickstart.cloudera:8022/user/cloudera/spark/departments")
+dataRDD.saveAsObjectFile("hdfs://quickstart.cloudera:8022/user/cloudera/spark/departmentsObject")
 
 

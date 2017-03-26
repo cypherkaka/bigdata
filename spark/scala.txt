@@ -1,0 +1,21 @@
+/**
+Spark using Scala context
+**/
+
+/*
+Build jar file using sbt
+*/
+download sbt and set environment variable
+/home/cloudera/sbt/bin
+
+//Append following two line to end of nano ~/.bash_profile
+SBT_HOME=/home/cloudera/sbt    
+export PATH=$PATH:$SBT_HOME/bin
+
+// Run following command to reload bash_profile
+[cloudera@quickstart ~]$ . ~/.bash_profile 
+
+
+
+
+

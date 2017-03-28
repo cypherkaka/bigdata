@@ -54,6 +54,7 @@ sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[NullWritable
 sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[Text], classOf[Text]).map(rec => rec.toString()).collect().foreach(println)
 
 /*
+Reading and saving JSon from SQLContext
 */
 import org.apache.spark.sql.hive.HiveContext
 val sqlContext = new HiveContext(sc)
@@ -81,6 +82,15 @@ departmentsData.collect().foreach(println)
 
 // Writing data in json format
 departmentsData.toJSON.saveAsTextFile("/user/cloudera/scalaspark/departmentsJson")
+
+/**
+Word count using flatMap, map, reduceByKey
+*/
+val data = sc.textFile("/user/cloudera/wordcount.txt") 
+val dataFlatMap = data.flatMap(rec => rec.split(" "))
+val dataMap = dataFlatMap.map(rec => (rec,1))  
+val dataReduceByKey = dataMap.reduceByKey((acc, value) => acc + value)
+dataReduceByKey.saveAsTextFile("/user/cloudera/wordcountoutput")
 
 
 

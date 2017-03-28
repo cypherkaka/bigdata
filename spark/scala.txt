@@ -52,3 +52,38 @@ sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[NullWritable
 
 // reading sequence file with Text as key
 sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[Text], classOf[Text]).map(rec => rec.toString()).collect().foreach(println)
+
+/*
+*/
+import org.apache.spark.sql.hive.HiveContext
+val sqlContext = new HiveContext(sc)
+val departmentsRDD = sqlContext.sql("select * from departments")
+departmentsRDD.collect().foreach(println)
+
+// copy following departments.json to hdfs
+/*
+{"department_id":1, "department_name":"A"}
+{"department_id":2, "department_name":"B"}
+{"department_id":3, "department_name":"C"}
+{"department_id":4, "department_name":"D"}
+*/
+
+// copy to hdfs
+hadoop fs -put departments.json /user/cloudera/scalaspark
+
+// register table from Json
+import org.apache.spark.sql.SQLContext
+val sqlContext = new SQLContext(sc)
+val departmentsJson = sqlContext.jsonFile("/user/cloudera/scalaspark/departments.json")
+departmentsJson.registerTempTable("departmentsTable")
+val departmentsData = sqlContext.sql("select * from departmentsTable")
+departmentsData.collect().foreach(println)
+
+// Writing data in json format
+departmentsData.toJSON.saveAsTextFile("/user/cloudera/scalaspark/departmentsJson")
+
+
+
+
+
+

@@ -92,8 +92,91 @@ val dataMap = dataFlatMap.map(rec => (rec,1))
 val dataReduceByKey = dataMap.reduceByKey((acc, value) => acc + value)
 dataReduceByKey.saveAsTextFile("/user/cloudera/wordcountoutput")
 
+/**
+Joining data sets: only requrement is 'common key' between two transformation
+*/
 
+//Check database tables to join [orders, order_items]
+[cloudera@quickstart ~]$ mysql -u retail_dba -p
+mysql> show databases
+mysql> use retail_db
+mysql> show tables
 
+// Problem: Get revenue and number of orders from order_items on daily basis
+val ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+val orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
 
+val ordersParsedRDD = ordersRDD.map(rec => (rec.split(",")(0).toInt, rec))
+val orderItemsParsedRDD = orderItemsRDD.map(rec => (rec.split(",")(1).toInt, rec))
 
+val ordersJoinOrderItems = orderItemsParsedRDD.join(ordersParsedRDD)
+/*  Output:
+scala> ordersJoinOrderItems.take(5).foreach(println)
+(41234,(102921,41234,249,2,109.94,54.97,41234,2014-04-04 00:00:00.0,3182,PENDING_PAYMENT))
+(65722,(164249,65722,365,2,119.98,59.99,65722,2014-05-23 00:00:00.0,4077,COMPLETE))
+(65722,		(164250,65722,730,5,400.0,80.0,		65722,2014-05-23 00:00:00.0,4077,COMPLETE))
+------		-------------------------------------------------------------------------------
+  _1											_2
 
+(65722,		(164252,65722,627,5,199.95,39.99,  	65722,2014-05-23 00:00:00.0,4077,COMPLETE))
+------		---------------------------------	------------------------------------------
+_1         				_1										_2
+OrderId	       		ORDER_ITEMS  						    	ORDERS	
+
+tuples can be access using ._ and array can be accessed using (1) notation
+*/
+
+// <orderDate, totalRevenue>
+val revenuePerOrderPerDay = ordersJoinOrderItems.map(t => (t._2._2.split(",")(1), t._2._1.split(",")(4).toFloat))
+
+// revenue per day from joined data
+val totalRevenuePerDay = revenuePerOrderPerDay.reduceByKey((t1,t2) => t1+t2)
+totalRevenuePerDay.sortByKey().take(10).foreach(println)
+/* Output:
+(2013-07-25 00:00:00.0,68153.875)                                               
+(2013-07-26 00:00:00.0,136520.1)
+(2013-07-27 00:00:00.0,101074.33)
+(2013-07-28 00:00:00.0,87123.086)
+(2013-07-29 00:00:00.0,137287.02)
+(2013-07-30 00:00:00.0,102745.59)
+(2013-07-31 00:00:00.0,131878.02)
+(2013-08-01 00:00:00.0,129001.586)
+(2013-08-02 00:00:00.0,109346.99)
+(2013-08-03 00:00:00.0,95266.89)   
+*/
+
+// Number or orders from order_items on daily basis
+// Order count per day
+val ordersPerDay = ordersJoinOrderItems.map(t => (t._2._2.split(",")(1) + "," + t._1)).distinct()
+val ordersPerDayParsedRDD = ordersPerDay.map(t => (t.split(",")(0), 1))
+val totalOrdersPerDay = ordersPerDayParsedRDD.reduceByKey((x,y) => x+y)
+totalOrdersPerDay.sortByKey().take(10).foreach(println)
+/* Output:
+(2013-07-25 00:00:00.0,116)                                                     
+(2013-07-26 00:00:00.0,233)
+(2013-07-27 00:00:00.0,175)
+(2013-07-28 00:00:00.0,158)
+(2013-07-29 00:00:00.0,216)
+(2013-07-30 00:00:00.0,182)
+(2013-07-31 00:00:00.0,209)
+(2013-08-01 00:00:00.0,212)
+(2013-08-02 00:00:00.0,186)
+(2013-08-03 00:00:00.0,159)
+*/
+ 
+// Join order count per day and revenue per day
+val finalJoinRDD = totalOrdersPerDay.join(totalRevenuePerDay)
+
+finalJoinRDD.sortByKey().take(10).foreach(println)
+/* Outpu:
+ (2013-07-25 00:00:00.0,(116,68153.875))                                         
+(2013-07-26 00:00:00.0,(233,136520.1))
+(2013-07-27 00:00:00.0,(175,101074.33))
+(2013-07-28 00:00:00.0,(158,87123.086))
+(2013-07-29 00:00:00.0,(216,137287.02))
+(2013-07-30 00:00:00.0,(182,102745.59))
+(2013-07-31 00:00:00.0,(209,131878.02))
+(2013-08-01 00:00:00.0,(212,129001.586))
+(2013-08-02 00:00:00.0,(186,109346.99))
+(2013-08-03 00:00:00.0,(159,95266.89))
+*/

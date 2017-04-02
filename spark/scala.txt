@@ -258,3 +258,74 @@ val joinAggData = sqlContext.sql("select o.order_date, round(sum(oi.order_item_s
 
 sqlContext.sql("set spark.sql.shuffel.partitions=10")
 joinAggData.collect().foreach(println)
+
+
+/**
+Aggregating Data (avg/sum/max)
+*/
+
+/*  Table structure
+
+mysql> describe orders;
++-------------------+-------------+------+-----+---------+----------------+
+| Field             | Type        | Null | Key | Default | Extra          |
++-------------------+-------------+------+-----+---------+----------------+
+| order_id          | int(11)     | NO   | PRI | NULL    | auto_increment |
+| order_date        | datetime    | NO   |     | NULL    |                |
+| order_customer_id | int(11)     | NO   |     | NULL    |                |
+| order_status      | varchar(45) | NO   |     | NULL    |                |
++-------------------+-------------+------+-----+---------+----------------+
+
+mysql> describe order_items;
++--------------------------+------------+------+-----+---------+----------------+
+| Field                    | Type       | Null | Key | Default | Extra          |
++--------------------------+------------+------+-----+---------+----------------+
+| order_item_id            | int(11)    | NO   | PRI | NULL    | auto_increment |
+| order_item_order_id      | int(11)    | NO   |     | NULL    |                |
+| order_item_product_id    | int(11)    | NO   |     | NULL    |                |
+| order_item_quantity      | tinyint(4) | NO   |     | NULL    |                |
+| order_item_subtotal      | float      | NO   |     | NULL    |                |
+| order_item_product_price | float      | NO   |     | NULL    |                |
++--------------------------+------------+------+-----+---------+----------------+
+*/
+
+// Total revenue 
+val orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
+val totalRevenue = orderItemsRDD.map(o => o.split(",")(4).toFloat).reduce((a,v) => a+v)
+printf("%f", totalRevenue)
+
+// Average[we can not take from Orders as they may have Canceled orders]
+// Help: We can durectly use '_.' instead of defining 'rec =>'
+val distinctOrderCount = orderItemsRDD.map(_.split(",")(1).toInt).distinct.count()
+val average = totalRevenue/distinctOrderCount
+
+// Max
+// [Problem Statement: Find order with highest revenue]
+var orderItemsMap = orderItemsRDD.map(rec => (rec.split(",")(1).toInt, rec.split(",")(4).toFloat))
+
+// In reduceByKey, anonymous funtion applied to value only and key will be aggregated 
+val revenuePerOrder = orderItemsMap.reduceByKey((acc, value)=> acc+value)
+
+/*  revenuePerOrder: Output
+(32676,719.91)
+(53926,219.97)
+(4926,939.85)
+
+acc._1 = 32676
+acc._2 = 719.91 
+*/
+val maxRevenue = revenuePerOrder.reduce((acc,value) =>
+(if(acc._2 >= value._2) acc else value)
+)
+
+/* maxRevenue: Output
+maxRevenue: (Int, Float) = (68703,3449.91)
+
+Cross verify in MySql
+Select order_item_order_id, sum(order_item_subtotal) from order_items
+group by order_item_order_id
+order by 2;
+
+Output:
+68703 |         3449.90998840332
+*/

@@ -329,3 +329,43 @@ order by 2;
 Output:
 68703 |         3449.90998840332
 */
+
+/**
+Aggregating Data by key
+*/
+
+// Count of orders for each status using countByKey
+val ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+ordersRDD.map(rec => (rec.split(",")(3), rec)).countByKey().foreach(println)
+
+/* Validate in sql
+select order_status, count(1) from orders group by order_status;
+*/
+
+// Count of orders for each status using groupByKey
+// Help: groupByKey is not usng combiner internally
+val ordersMap = ordersRDD.map(rec => (rec.split(",")(3), 1))
+ordersMap.groupByKey().map(rec => (rec._1, rec._2.sum)).collect.foreach(println)
+
+// Count of orders for each status using reduceByKey
+// Help: reduceByKey uses combiner internally
+ordersMap.reduceByKey((acc, value) => acc+value).collect.foreach(println)
+
+// Count of orders for each status using combineByKey
+// Help: both reduceByKey and combineByKey expects type of input and output date are same
+val ordersMap = ordersRDD.map(rec => (rec.split(",")(3), 0))
+val ordersByStatus = ordersMap.combineByKey(value => 1, (acc: Int, value: Int) => acc+1, (acc: Int, value: Int) => acc+value)
+
+// Count of orders for each status using aggregateByKey
+val ordersByStatus = ordersMap.aggregateByKey(0)((acc, value) => acc+1, (acc, value) => acc+value)
+
+
+
+
+
+
+
+
+
+
+

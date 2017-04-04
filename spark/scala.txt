@@ -359,10 +359,69 @@ val ordersByStatus = ordersMap.combineByKey(value => 1, (acc: Int, value: Int) =
 // Count of orders for each status using aggregateByKey
 val ordersByStatus = ordersMap.aggregateByKey(0)((acc, value) => acc+1, (acc, value) => acc+value)
 
+/**
+Customer ID for max revenue for each day
+*/
 
+val ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
+val orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
 
+val ordersParsedRDD = ordersRDD.map(rec => (rec.split(",")(0), rec))
+val orderItemsParsedRDD = orderItemsRDD.map(rec => (rec.split(",")(1), rec))
 
+val ordersJoinOrderItems = orderItemsParsedRDD.join(ordersParsedRDD)
+/* Output
+(2828,(		7097,2828,403,1,129.99,129.99,		2828,2013-08-10 00:00:00.0,4952,SUSPECTED_FRAUD))
+(43399,(	108397,43399,502,2,100.0,50.0,		43399,2014-04-20 00:00:00.0,16,COMPLETE))
+(43399,(	108398,43399,403,1,129.99,129.99,	43399,2014-04-20 00:00:00.0,16,COMPLETE))
+(43399,(	108399,43399,1014,1,49.98,49.98,	43399,2014-04-20 00:00:00.0,16,COMPLETE))
+(8989,(		22422,8989,627,3,119.97,39.99,		8989,2013-09-19 00:00:00.0,2501,PENDING_PAYMENT))
+*/
 
+val ordersPerDayPerCustomer = ordersJoinOrderItems.map(rec => ((rec._2._2.split(",")(1),rec._2._2.split(",")(2)), rec._2._1.split(",")(4).toFloat))
+/* Output
+((2013-08-10 00:00:00.0,4952),	129.99)                                           
+((2014-04-20 00:00:00.0,16),	100.0)
+((2014-04-20 00:00:00.0,16),	129.99)
+((2014-04-20 00:00:00.0,16),	49.98)
+((2013-09-19 00:00:00.0,2501),	119.97)
+*/
+
+val revenuePerDayPerCustomer = ordersPerDayPerCustomer.reduceByKey((x, y) => x+y)
+/* Output
+((2013-08-01 00:00:00.0,5806),	639.88)                                           
+((2014-04-25 00:00:00.0,6415),	609.83997)
+((2013-10-14 00:00:00.0,10165),	499.95)
+((2014-02-20 00:00:00.0,5878),	1199.95)
+((2013-10-07 00:00:00.0,9206),	549.97)
+*/
+
+val revenuePerDayPerCustomerMap = revenuePerDayPerCustomer.map(rec => (rec._1._1, (rec._1._2, rec._2)))
+/* Output
+(2013-08-01 00:00:00.0,	(5806,		639.88))                                           
+(2014-04-25 00:00:00.0,	(6415,		609.83997))
+(2013-10-14 00:00:00.0,	(10165,		499.95))
+(2014-02-20 00:00:00.0,	(5878,		1199.95))
+(2013-10-07 00:00:00.0,	(9206,		549.97))
+*/
+
+val topCustomerPerDayByRevenue = revenuePerDayPerCustomerMap.reduceByKey((x,y) => (if(x._2 >= y._2) x else y)) 
+/*Output
+(2013-10-05 00:00:00.0,(6647,1429.92))                                          
+(2014-07-17 00:00:00.0,(12202,1449.7101))
+(2014-05-06 00:00:00.0,(4987,1749.83))
+(2014-05-17 00:00:00.0,(6233,1829.88))
+(2014-04-25 00:00:00.0,(1670,1449.77))
+*/
+
+//Using regular function
+def findMax(x: (String, Float), y: (String, Float)): (String, Float) = {
+  if(x._2 >= y._2)
+    return x
+  else
+    return y
+}
+val topCustomerPerDaybyRevenue = revenuePerDayPerCustomerMap.reduceByKey((x, y) => findMax(x, y))
 
 
 

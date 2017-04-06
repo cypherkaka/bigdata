@@ -476,6 +476,67 @@ val sqlContext = new HiveContext(sc)
 sqlContext.sql("select * from (select o.order_id, sum(oi.order_item_subtotal) as order_item_revenue from orders o join order_items oi on o.order_id = oi.order_item_order_id where o.order_status = 'CANCELED' group by o.order_id) q where order_item_revenue >= 1000").count()
 
 
+/**
+Global sorting and ranking (sortByKey, top and takeOrdered)
+*/
 
+/**
++---------------------+--------------+------+-----+---------+----------------+
+| Field               | Type         | Null | Key | Default | Extra          |
++---------------------+--------------+------+-----+---------+----------------+
+| product_id          | int(11)      | NO   | PRI | NULL    | auto_increment |
+| product_category_id | int(11)      | NO   |     | NULL    |                |
+| product_name        | varchar(45)  | NO   |     | NULL    |                |
+| product_description | varchar(255) | NO   |     | NULL    |                |
+| product_price       | float        | NO   |     | NULL    |                |
+| product_image       | varchar(255) | NO   |     | NULL    |                |
++---------------------+--------------+------+-----+---------+----------------+
+*/
 
+// Global sorting by price on Product
+val productsRDD = sc.textFile("/user/cloudera/sqoop_import/products")
 
+// key will be colum on which we want sorting, in this case it is product_price
+productsRDD.map(rec => (rec.split(",")(4).toFloat, rec)).sortByKey().collect().foreach(println)
+
+/*Output
+(999.99,695,32,Callaway Women's Solaire Gems 20-Piece Comple,,999.99,http://images.acmesports.sports/Callaway+Women%27s+Solaire+Gems+20-Piece+Complete+Set+-...)
+(1099.99,1048,47,Spalding Beast 60" Glass Portable Basketball ,,1099.99,http://images.acmesports.sports/Spalding+Beast+60%22+Glass+Portable+Basketball+Hoop)
+(1799.99,66,4,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill)
+(1799.99,199,10,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill)
+*/
+
+// Sort in descending order 'sortByKey(false)'
+productsRDD.map(rec => (rec.split(",")(4).toFloat, rec)).sortByKey(false).collect().foreach(println)
+
+/*Output
+(5.0,336,15,Nike Swoosh Headband - 2",,5.0,http://images.acmesports.sports/Nike+Swoosh+Headband+-+2%22)
+(4.99,624,29,adidas Batting Helmet Hardware Kit,,4.99,http://images.acmesports.sports/adidas+Batting+Helmet+Hardware+Kit)
+(4.99,815,37,Zero Friction Practice Golf Balls - 12 Pack,,4.99,http://images.acmesports.sports/Zero+Friction+Practice+Golf+Balls+-+12+Pack)
+(0.0,38,3,Nike Men's Hypervenom Phantom Premium FG Socc,,0.0,http://images.acmesports.sports/Nike+Men%27s+Hypervenom+Phantom+Premium+FG+Soccer+Cleat)
+(0.0,388,18,Nike Men's Hypervenom Phantom Premium FG Socc,,0.0,http://images.acmesports.sports/Nike+Men%27s+Hypervenom+Phantom+Premium+FG+Soccer+Cleat)
+*/
+
+// for ranking we can use 'top' action
+// top: sort data in ascending order and fetch 5 records
+productsRDD.map(rec => (rec.split(",")(4).toFloat, rec)).top(5).foreach(println)
+
+/*Output
+(1999.99,208,10,SOLE E35 Elliptical,,1999.99,http://images.acmesports.sports/SOLE+E35+Elliptical)
+(1799.99,66,4,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill)
+(1799.99,496,22,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill)
+(1799.99,199,10,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill)
+(1099.99,1048,47,Spalding Beast 60" Glass Portable Basketball ,,1099.99,http://images.acmesports.sports/Spalding+Beast+60%22+Glass+Portable+Basketball+Hoop)
+*/
+
+// takeOrdered is same like map+sortByKey+take
+//Ordering[Float] is Scala class for order functionality
+productsRDD.takeOrdered(5)(Ordering[Float].reverse.on(x => x.split(",")(4).toFloat)).foreach(println)
+
+/*Output
+208,10,SOLE E35 Elliptical,,1999.99,http://images.acmesports.sports/SOLE+E35+Elliptical
+496,22,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill
+199,10,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill
+66,4,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill
+1048,47,Spalding Beast 60" Glass Portable Basketball ,,1099.99,http://images.acmesports.sports/Spalding+Beast+60%22+Glass+Portable+Basketball+Hoop
+*/

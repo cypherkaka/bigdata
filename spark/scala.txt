@@ -73,11 +73,6 @@ scala> t._2._2(1)
 res17: String = World
 */
 
-
-
-
-
-
 /*
 Build jar file using sbt
 */
@@ -616,4 +611,63 @@ productsRDD.takeOrdered(5)(Ordering[Float].reverse.on(x => x.split(",")(4).toFlo
 66,4,SOLE F85 Treadmill,,1799.99,http://images.acmesports.sports/SOLE+F85+Treadmill
 1048,47,Spalding Beast 60" Glass Portable Basketball ,,1099.99,http://images.acmesports.sports/Spalding+Beast+60%22+Glass+Portable+Basketball+Hoop
 */
+
+/**
+Sorting and Ranking by key using groupByKey
+Problem: Sort product price per category
+*/
+
+/*	Table: Products
++---------------------+--------------+------+-----+---------+----------------+
+| Field               | Type         | Null | Key | Default | Extra          |
++---------------------+--------------+------+-----+---------+----------------+
+| product_id          | int(11)      | NO   | PRI | NULL    | auto_increment |
+| product_category_id | int(11)      | NO   |     | NULL    |                |
+| product_name        | varchar(45)  | NO   |     | NULL    |                |
+| product_description | varchar(255) | NO   |     | NULL    |                |
+| product_price       | float        | NO   |     | NULL    |                |
+| product_image       | varchar(255) | NO   |     | NULL    |                |
++---------------------+--------------+------+-----+---------+----------------+
+
+Table: Categories
++------------------------+-------------+------+-----+---------+----------------+
+| Field                  | Type        | Null | Key | Default | Extra          |
++------------------------+-------------+------+-----+---------+----------------+
+| category_id            | int(11)     | NO   | PRI | NULL    | auto_increment |
+| category_department_id | int(11)     | NO   |     | NULL    |                |
+| category_name          | varchar(45) | NO   |     | NULL    |                |
++------------------------+-------------+------+-----+---------+----------------+
+
+*/
+
+val productsRDD = sc.textFile("/user/cloudera/sqoop_import/products")
+val productsMap = productsRDD.map(rec => (rec.split(",")(1), rec))
+val productsGropBy = productsMap.groupByKey()
+
+// to print records with same category
+productsGropBy.flatMap(rec => rec._2).take(100).foreach(println)
+
+// Product price sort by Map
+productsGropBy.map(rec => (rec._1, rec._2.toList.sortBy(k => k.split(",")(4).toFloat))).take(5).foreach(println)
+
+// Product price sort by flatMap in desending order [flatMap straight apply to value]
+productsGropBy.flatMap(rec => (rec._2.toList.sortBy(k => -k.split(",")(4).toFloat))).take(5).foreach(println)
+
+// Using method
+//scala> productsGropBy
+//Op: res1: org.apache.spark.rdd.RDD[(String, Iterable[String])] = ShuffledRDD[3] at groupByKey at <console>:31
+
+def sortList(rec: (String, Iterable[String])): Iterable[String] = {
+   return rec._2.toList.sortBy(k => k.split(",")(4).toFloat)
+}
+// OP: sortList: (rec: (String, Iterable[String]))Iterable[String]
+
+// using method, [Help: _  is used as 'rec =>']
+productsGropBy.flatMap(sortList(_)).take(100).foreach(println)
+
+// Top N products
+def getTopN(rec: (String, Iterable[String], topN: Int)): Iterable[String] = {
+  return rec._2.toList.sortBy(-_.split(",")(4).toFloat).take(topN)
+}
+productsGropBy.flatMap(getTopN(_,2)).take(100).foreach(println)
 

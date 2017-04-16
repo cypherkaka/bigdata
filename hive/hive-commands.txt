@@ -26,3 +26,222 @@ dfs -du -s -h /user/hive/warehouse/order_items;
 
 # Table details
 describe formatted departments;
+
+# HiveSite.xml
+cd /etc/hive/conf
+nano hive-site.xml
+
+# Create table in Hive
+create table cca_demo(t int, s string);
+
+# Above command will create directory in hadoop
+[cloudera@quickstart conf]$ hadoop fs -ls /user/hive/warehouse
+drwxrwxrwx   - cloudera supergroup          0 2017-04-14 16:43 /user/hive/warehouse/cca_demo
+
+# Inserting into above table
+insert into cca_demo values(1, "txt-1");
+
+# To see complete structure use ['formatted']
+hive> describe formatted cca_demo;
+OK
+# col_name            	data_type           	comment             
+	 	 
+t                   	int                 	                    
+s                   	string              	                    
+	 	 
+# Detailed Table Information	 	 
+Database:           	default             	 
+Owner:              	cloudera            	 
+CreateTime:         	Fri Apr 14 16:43:08 PDT 2017	 
+LastAccessTime:     	UNKNOWN             	 
+Protect Mode:       	None                	 
+Retention:          	0                   	 
+Location:           	hdfs://quickstart.cloudera:8020/user/hive/warehouse/cca_demo	 
+Table Type:         	MANAGED_TABLE       	 
+Table Parameters:	 	 
+	COLUMN_STATS_ACCURATE	true                
+	numFiles            	2                   
+	numRows             	2                   
+	rawDataSize         	14                  
+	totalSize           	16                  
+	transient_lastDdlTime	1492213699          
+	 	 
+# Storage Information	 	 
+SerDe Library:      	org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe	 
+InputFormat:        	org.apache.hadoop.mapred.TextInputFormat	 
+OutputFormat:       	org.apache.hadoop.hive.ql.io.HiveIgnoreKeyTextOutputFormat	 
+Compressed:         	No                  	 
+Num Buckets:        	-1                  	 
+Bucket Columns:     	[]                  	 
+Sort Columns:       	[]                  	 
+Storage Desc Params:	 	 
+	serialization.format	1                   
+Time taken: 0.103 seconds, Fetched: 32 row(s)
+
+# list database
+dfs -ls /user/hive/warehouse;
+
+# [help: find word in all files]
+grep warehouse *
+
+# Create db 
+CREATE DATABASE IF NOT EXISTS cards;
+use cards;
+
+create table deck_of_cards (
+color string,
+suit string,
+pip string)
+row format delimited fields terminated by '|'
+stored as textfile;
+
+# Load data from loca file [deckofcards.txt exist in local fs not in hadoop fs]
+load data local inpath '/home/cloudera/demo/data/cards/deckofcards.txt' into table deck_of_cards;
+
+# Create external table [External table will have clause 'EXTERNAL' and 'LOCATION', also LOCATION should be at the end]
+CREATE EXTERNAL TABLE deck_of_cards_external (
+color string,
+suit string,
+pip string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE
+LOCATION '/user/hive/warehouse/cards.db/deck_of_cards';
+
+# Difference between an EXTERNAL TABLE and a MANAGED TABLE
+The main difference is that 
+when you drop an external table, the underlying data files stay intact. 
+This is because the user is expected to manage the data files and directories. 
+With a managed table, the underlying directories and data get wiped out when the table is dropped.
+
+# Performance of each department
+CREATE DATABASE IF NOT EXISTS retail_ods;
+CREATE DATABASE retail_ods;
+
+# Physical data modaling(create table) of each database
+use retail_ods;
+CREATE TABLE categories (
+category_id int,
+category_department_id int,
+category_name string
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+CREATE TABLE customers (
+customer_id int,
+customer_fname string,
+customer_lname string,
+customer_email string,
+customer_password string,
+customer_street string,
+customer_city string,
+customer_state string,
+customer_zipcode string
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+CREATE TABLE departments(
+department_id int,
+department_name string	
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+# Partition should be created on same field for better performance
+CREATE TABLE orders(
+order_id int,
+order_date string,
+order_customer_id int,
+order_status string
+)
+PARTITIONED BY (order_month string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+CREATE TABLE order_items(
+order_item_id int,
+order_item_order_id int,
+order_item_order_date string,
+order_item_product_id int,
+order_item_quantity smallint,
+order_item_subtotal float,
+order_item_product_price float	
+)
+PARTITIONED BY (order_month string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE; 
+
+# Bucket(Hash) Partition, it will calculate hash on ORDER_ID and store it accordingly
+CREATE TABLE orders_bucket(
+order_id int,
+order_date string,
+order_customer_id int,
+order_status string
+)
+CLUSTERED BY (order_id) INTO 16 BUCKETS
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+CREATE TABLE order_items_bucket(
+order_item_id int,
+order_item_order_id int,
+order_item_order_date string,
+order_item_product_id int,
+order_item_quantity smallint,
+order_item_subtotal float,
+order_item_product_price float	
+)
+CLUSTERED BY (order_item_order_id) INTO 16 BUCKETS 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE; 
+
+CREATE TABLE products(
+product_id int,
+product_category_id int,
+product_name string,
+product_description string,
+product_price float,
+product_image string
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+-- Create EDW tables
+use retail_edw;
+CREATE TABLE product_dimension(
+product_id int,
+product_name string,
+product_description string,
+product_price float,
+product_category_name string,
+product_department_name string
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+
+CREATE TABLE order_fact(
+order_item_order_id int,
+order_item_order_date string,
+order_item_product_id int,
+order_item_quantity smallint,
+order_item_subtotal float,
+order_item_product_price float	
+)
+PARTITIONED BY(product_category_department string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+
+# Improve query performance by partitioned tables in Hive
+
+# Help
+OLTP (OnLine Transaction Processing)
+Two partition in Hive (List and Hash(bucket))
+
+
+
+
+
+

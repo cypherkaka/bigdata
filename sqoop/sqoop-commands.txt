@@ -47,6 +47,13 @@ sqoop import \
  --table departments\
  --target-dir /user/cloudera/departments
 
+ sqoop import \
+ --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+ --username retail_dba \
+ --password cloudera \
+ --table categories\
+ --target-dir /user/cloudera/categories
+
 # Import single table with boundry query
 sqoop import \
  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
@@ -181,3 +188,6 @@ sqoop export \
     --outdir java_files \
     --update-key department_id  \
     --update-mode allowinsert
+
+
+ref number: 000125

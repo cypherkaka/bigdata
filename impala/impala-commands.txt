@@ -1,0 +1,5 @@
+## --------- Impala Details --------- ##
+
+# To start
+impala-shell
+

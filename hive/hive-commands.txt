@@ -233,6 +233,23 @@ PARTITIONED BY(product_category_department string)
 ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
 STORED AS TEXTFILE;
 
+# Extract and load [Get data from different sources and load into HDFS]
+/* 
+Two approches to achieve this
+1. PULL:  Sqoop is one of the option to pull data and load into HDFS
+2. PUSH:  Hive is one of the optoin to push data straight to HDFS
+*/
+
+-- Create data to load
+select * from categories into outfile '/tmp/categories01.psv' fields terminated by '|' lines terminated by '\n';
+select * from categories into outfile '/tmp/categories02.csv' fields terminated by ',' lines terminated by '\n';
+
+-- load data from local file system
+load data local inpath '/tmp/categories02.csv' overwrite into table categories;
+
+-- load data from HDFS
+load data inpath '/user/cloudera/categories/part*' overwrite into table categories;
+
 
 # Improve query performance by partitioned tables in Hive
 

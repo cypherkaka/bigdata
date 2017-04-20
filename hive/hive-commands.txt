@@ -251,6 +251,39 @@ load data local inpath '/tmp/categories02.csv' overwrite into table categories;
 load data inpath '/user/cloudera/categories/part*' overwrite into table categories;
 
 
+# Insert into dynamic partition requires to set few properties
+
+-- set dynamic.partition to TRUE
+hive> set hive.exec.dynamic.partition;
+hive.exec.dynamic.partition=true
+
+-- set mod to nonstrict
+hive> set hive.exec.dynamic.partition.mode;
+hive.exec.dynamic.partition.mode=strict
+hive> set hive.exec.dynamic.partition.mode=nonstrict;
+hive> set hive.exec.dynamic.partition.mode;
+hive.exec.dynamic.partition.mode=nonstrict
+
+-- Create data file
+mysql> select * from orders into outfile '/tmp/orders.psv' fields terminated by '|' lines terminated by '\n';
+
+hive>
+CREATE TABLE orders_stage(
+order_id int,
+order_date string,
+order_customer_id int,
+order_status string
+) ROW FORMAT DELIMITED FIELDS TERMINATED BY '|'
+STORED AS TEXTFILE;
+
+-- load data to local table
+hive>load data local inpath '/tmp/orders.psv' overwrite into table orders_stage; 
+
+--  insert data into table with partition
+insert overwrite table retail_ods.orders partition(order_month)
+select order_id, order_date, order_customer_id, order_status, substr(order_date, 1,7) order_month
+from retail_stage.orders_stage;	
+
 # Improve query performance by partitioned tables in Hive
 
 # Help

@@ -189,5 +189,32 @@ sqoop export \
     --update-key department_id  \
     --update-mode allowinsert
 
+# Import all table as avro file
 
-ref number: 000125
+-- Reference: http://www.cloudera.com/content/cloudera/en/developers/home/developer-admin-resources/get-started-with-hadoop-tutorial/exercise-1.html
+
+sqoop import-all-tables \
+  -m 1 \
+  --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
+  --username=retail_dba \
+  --password=cloudera \
+  --as-avrodatafile \
+  --warehouse-dir=/user/hive/warehouse/retail_stage.db
+
+# Extract schema from avro file
+1. import table using sqoop and use --as-avrodatafile 
+
+2. get data from hadoop
+[cloudera@quickstart departments]$ hadoop fs -get /user/hive/warehouse/retail_stage.db/departments
+
+3. extract schema using avro-tools
+[cloudera@quickstart departments]$ avro-tools getschema part-m-00000.avro > departments_schema.svsc
+
+-- extract json data to json file
+[cloudera@quickstart departments]$ avro-tools tojson part-m-00000.avro > departments.json
+
+-- json to avro 
+[cloudera@quickstart departments]$ avro-tools fromjson departments.json --schema-file departments_schema.avsc 
+
+
+

@@ -217,4 +217,47 @@ sqoop import-all-tables \
 [cloudera@quickstart departments]$ avro-tools fromjson departments.json --schema-file departments_schema.avsc 
 
 
+# Create table in hive using avro
+-- .avsc file store strure of table[schema] in Json format
+-- .avro file 
 
+1. create directory
+hadoop fs -mkdir /user/cloudera/retail_stage
+
+2. copy all .avsc file
+hadoop fs -copyFromLocal *.avsc /user/cloudera/retail_stage
+
+3. use hive and switch to retail_stage and execute following commands
+use retail_stage;
+
+
+-- below commands will work in Hive and Impala also
+CREATE EXTERNAL TABLE categories
+STORED AS AVRO
+LOCATION 'hdfs:///user/hive/warehouse/retail_stage.db/categories'
+TBLPROPERTIES ('avro.schema.url'='hdfs://quickstart.cloudera/user/cloudera/retail_stage/categories.avsc');
+
+CREATE EXTERNAL TABLE customers
+STORED AS AVRO
+LOCATION 'hdfs:///user/hive/warehouse/retail_stage.db/customers'
+TBLPROPERTIES ('avro.schema.url'='hdfs://quickstart.cloudera/user/cloudera/retail_stage/customers.avsc');
+
+CREATE EXTERNAL TABLE departments
+STORED AS AVRO
+LOCATION 'hdfs:///user/hive/warehouse/retail_stage.db/departments'
+TBLPROPERTIES ('avro.schema.url'='hdfs://quickstart.cloudera/user/cloudera/retail_stage/departments.avsc');
+
+CREATE EXTERNAL TABLE orders
+STORED AS AVRO
+LOCATION 'hdfs:///user/hive/warehouse/retail_stage.db/orders'
+TBLPROPERTIES ('avro.schema.url'='hdfs://quickstart.cloudera/user/cloudera/retail_stage/orders.avsc');
+
+CREATE EXTERNAL TABLE order_items
+STORED AS AVRO
+LOCATION 'hdfs:///user/hive/warehouse/retail_stage.db/order_items'
+TBLPROPERTIES ('avro.schema.url'='hdfs://quickstart.cloudera/user/cloudera/retail_stage/order_items.avsc');
+
+CREATE EXTERNAL TABLE products
+STORED AS AVRO
+LOCATION 'hdfs:///user/hive/warehouse/retail_stage.db/products'
+TBLPROPERTIES ('avro.schema.url'='hdfs://quickstart.cloudera/user/cloudera/retail_stage/products.avsc');

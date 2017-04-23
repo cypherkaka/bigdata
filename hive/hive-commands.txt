@@ -284,7 +284,38 @@ insert overwrite table retail_ods.orders partition(order_month)
 select order_id, order_date, order_customer_id, order_status, substr(order_date, 1,7) order_month
 from retail_stage.orders_stage;	
 
-# Improve query performance by partitioned tables in Hive
+# Partitioning in Hive with Avro file format
+1. copy orders.avsc to orders_part_avro.avsc
+cp orders.avsc orders_part_avro.avsc
+
+2. edit orders_part_avro.avsc and 
+	- change name to orders_part_avro 
+	- remove 'default ', 'columnName' and 'sqlType' from all records
+
+3. copy newly edited file to 
+[cloudera@quickstart avro]$ hadoop fs -put orders_part_avro.avsc /user/cloudera/retail_stage
+
+4. execute create table in hive after switching to retail_stage
+use retail_stage;
+
+CREATE TABLE orders_part_avro (
+order_id int,
+order_date bigint,
+order_customer_id int,
+order_status string
+)
+PARTITIONED BY (order_month string)
+STORED AS AVRO
+LOCATION 'hdfs:///user/hive/warehouse/retail_stage.db/orders_part_avro'
+TBLPROPERTIES ('avro.schema.url'='hdfs://quickstart.cloudera/user/cloudera/retail_stage/orders_part_avro.avsc');
+
+-- Create partition manually
+alter table orders_part_avro add partition (order_month='2014-01');
+
+-- Inserting data to a partition
+insert into table orders_part_avro partition (order_month='2014-01')
+select * from orders where from_unixtime(cast(substr(order_date, 1, 10) as int)) like '2014-01%';
+
 
 # Help
 OLTP (OnLine Transaction Processing)

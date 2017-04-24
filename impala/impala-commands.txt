@@ -3,3 +3,8 @@
 # To start
 impala-shell
 
+# To refresh database
+invalidate metadata;
+
+# To refresh table only
+refresh <table>;

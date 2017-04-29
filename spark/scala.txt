@@ -671,3 +671,58 @@ def getTopN(rec: (String, Iterable[String], topN: Int)): Iterable[String] = {
 }
 productsGropBy.flatMap(getTopN(_,2)).take(100).foreach(println)
 
+
+
+/**
+* DATA FRAMES
+*/
+
+// Define Case Class 
+// [By default all variables are immutable and has public get/set methods]
+case class Orders(
+  order_id: Int,
+  order_date: String,
+  order_customer_id: Int,
+  order_status: String
+);
+
+// Define normal class [Normal class with constructor]
+class Ords(
+  order_id: Int,
+  order_date: String,
+  order_customer_id: Int,
+  order_status: String
+);
+
+// Create DataFram for Orders
+val ordersDF = sc.textFile("/user/cloudera/sqoop_import/orders").
+  map(rec => {
+  	val r = rec.split(",")
+  	Orders(r(0).toInt, r(1), r(2).toInt, r(3))
+  }).toDF
+
+/* O/P
+scala> val ordersDF = sc.textFile("/user/cloudera/sqoop_import/orders").
+     |   map(rec => {
+     |   val r = rec.split(",")
+     |   Orders(r(0).toInt, r(1), r(2).toInt, r(3))
+     |   }).toDF
+ordersDF: org.apache.spark.sql.DataFrame = [order_id: int, order_date: string, order_customer_id: int, order_status: string]
+*/
+
+// select few columns from dataframe
+ordersDF.select("order_id", "order_date").take(100).foreach(println)
+
+/*
+scala> ordersDF.select("order_id", "order_date").take(4).foreach(println)
+[1,2013-07-25 00:00:00.0]
+[2,2013-07-25 00:00:00.0]
+[3,2013-07-25 00:00:00.0]
+[4,2013-07-25 00:00:00.0]
+
+scala> ordersDF.select("*").take(4).foreach(println)
+[1,2013-07-25 00:00:00.0,11599,CLOSED]
+[2,2013-07-25 00:00:00.0,256,PENDING_PAYMENT]
+[3,2013-07-25 00:00:00.0,12111,COMPLETE]
+[4,2013-07-25 00:00:00.0,8827,CLOSED]
+*/

@@ -695,7 +695,7 @@ class Ords(
 );
 
 // Create DataFram for Orders
-val ordersDF = sc.textFile("/user/cloudera/sqoop_import/orders").
+val ordersDFTmp = sc.textFile("/user/cloudera/sqoop_import/orders").
   map(rec => {
   	val r = rec.split(",")
   	Orders(r(0).toInt, r(1), r(2).toInt, r(3))
@@ -726,3 +726,247 @@ scala> ordersDF.select("*").take(4).foreach(println)
 [3,2013-07-25 00:00:00.0,12111,COMPLETE]
 [4,2013-07-25 00:00:00.0,8827,CLOSED]
 */
+
+
+/*---------------
+* EX 2: Create Case classes for Orders,OrderItems and execute DataFrame operations 
+*/
+
+case class Orders(
+  order_id: Int,
+  order_date: String,
+  order_customer_id: Int,
+  order_status: String
+);
+
+case class OrderItems(
+  order_item_id: Int,
+  order_item_order_id: Int,
+  order_item_product_id: Int,
+  order_item_quantity: Int,
+  order_item_subtotal: Double,
+  order_item_product_price: Double
+);
+
+val orders = sc.textFile("/user/cloudera/sqoop_import/orders");
+val orderItems = sc.textFile("/user/cloudera/sqoop_import/order_items");
+
+/* OP
+orders.first()
+res1: String = 1,2013-07-25 00:00:00.0,11599,CLOSED
+*/
+
+// Create DataFrame for Orders and OrderItems
+val ordersDF = orders.map(rec => {
+  val r = rec.split(",")
+  Orders(r(0).toInt, r(1), r(2).toInt, r(3))
+}).toDF
+
+val orderItemsDF = orderItems.map(rec => {
+  val r = rec.split(",")
+  OrderItems(r(0).toInt, r(1).toInt, r(2).toInt, r(3).toInt, r(4).toDouble, r(5).toDouble)
+}).toDF
+
+/* Execute Data Frame operations 
+
+//Verify schema
+scala> ordersDF.printSchema
+root
+ |-- order_id: integer (nullable = false)
+ |-- order_date: string (nullable = true)
+ |-- order_customer_id: integer (nullable = false)
+ |-- order_status: string (nullable = true)
+
+
+scala> orderItemsDF.printSchema
+root
+ |-- order_item_id: integer (nullable = false)
+ |-- order_item_order_id: integer (nullable = false)
+ |-- order_item_product_id: integer (nullable = false)
+ |-- order_item_quantity: integer (nullable = false)
+ |-- order_item_subtotal: double (nullable = false)
+ |-- order_item_product_price: double (nullable = false)
+
+// to view sample data
+scala> ordersDF.show
++--------+--------------------+-----------------+---------------+
+|order_id|          order_date|order_customer_id|   order_status|
++--------+--------------------+-----------------+---------------+
+|       1|2013-07-25 00:00:...|            11599|         CLOSED|
+|       2|2013-07-25 00:00:...|              256|PENDING_PAYMENT|
+|       3|2013-07-25 00:00:...|            12111|       COMPLETE|
+|       4|2013-07-25 00:00:...|             8827|         CLOSED|
+|       5|2013-07-25 00:00:...|            11318|       COMPLETE|
+|       6|2013-07-25 00:00:...|             7130|       COMPLETE|
+|       7|2013-07-25 00:00:...|             4530|       COMPLETE|
+|       8|2013-07-25 00:00:...|             2911|     PROCESSING|
+|       9|2013-07-25 00:00:...|             5657|PENDING_PAYMENT|
+|      10|2013-07-25 00:00:...|             5648|PENDING_PAYMENT|
+|      11|2013-07-25 00:00:...|              918| PAYMENT_REVIEW|
+|      12|2013-07-25 00:00:...|             1837|         CLOSED|
+|      13|2013-07-25 00:00:...|             9149|PENDING_PAYMENT|
+|      14|2013-07-25 00:00:...|             9842|     PROCESSING|
+|      15|2013-07-25 00:00:...|             2568|       COMPLETE|
+|      16|2013-07-25 00:00:...|             7276|PENDING_PAYMENT|
+|      17|2013-07-25 00:00:...|             2667|       COMPLETE|
+|      18|2013-07-25 00:00:...|             1205|         CLOSED|
+|      19|2013-07-25 00:00:...|             9488|PENDING_PAYMENT|
+|      20|2013-07-25 00:00:...|             9198|     PROCESSING|
++--------+--------------------+-----------------+---------------+
+only showing top 20 rows
+
+// Create tmp table and execute sql
+
+scala> ordersDF.registerTempTable("orders")
+
+scala> sqlContext.sql("select * from orders limit 10").collect().foreach(println)
+[1,2013-07-25 00:00:00.0,11599,CLOSED]
+[2,2013-07-25 00:00:00.0,256,PENDING_PAYMENT]
+[3,2013-07-25 00:00:00.0,12111,COMPLETE]
+[4,2013-07-25 00:00:00.0,8827,CLOSED]
+[5,2013-07-25 00:00:00.0,11318,COMPLETE]
+[6,2013-07-25 00:00:00.0,7130,COMPLETE]
+[7,2013-07-25 00:00:00.0,4530,COMPLETE]
+[8,2013-07-25 00:00:00.0,2911,PROCESSING]
+[9,2013-07-25 00:00:00.0,5657,PENDING_PAYMENT]
+[10,2013-07-25 00:00:00.0,5648,PENDING_PAYMENT]
+
+// In above query we must use collect() to get results because .sql() is type  of dataframe
+scala> sqlContext.sql("select * from orders limit 10")
+res11: org.apache.spark.sql.DataFrame = [order_id: int, order_date: string, order_customer_id: int, order_status: string]
+
+// select few fields on DF
+scala> ordersDF.select("order_id", "order_date").show()
++--------+--------------------+
+|order_id|          order_date|
++--------+--------------------+
+|       1|2013-07-25 00:00:...|
+|       2|2013-07-25 00:00:...|
+|       3|2013-07-25 00:00:...|
+|       4|2013-07-25 00:00:...|
+|       5|2013-07-25 00:00:...|
+|       6|2013-07-25 00:00:...|
+|       7|2013-07-25 00:00:...|
+|       8|2013-07-25 00:00:...|
+|       9|2013-07-25 00:00:...|
+|      10|2013-07-25 00:00:...|
+|      11|2013-07-25 00:00:...|
+|      12|2013-07-25 00:00:...|
+|      13|2013-07-25 00:00:...|
+|      14|2013-07-25 00:00:...|
+|      15|2013-07-25 00:00:...|
+|      16|2013-07-25 00:00:...|
+|      17|2013-07-25 00:00:...|
+|      18|2013-07-25 00:00:...|
+|      19|2013-07-25 00:00:...|
+|      20|2013-07-25 00:00:...|
++--------+--------------------+
+only showing top 20 rows
+
+
+// Apply filter on Data Frame
+scala> val ordersFiltered = ordersDF.filter(ordersDF("order_status") === "COMPLETE")
+ordersFiltered: org.apache.spark.sql.DataFrame = [order_id: int, order_date: string, order_customer_id: int, order_status: string]
+
+scala> ordersFiltered.printSchema
+root
+ |-- order_id: integer (nullable = false)
+ |-- order_date: string (nullable = true)
+ |-- order_customer_id: integer (nullable = false)
+ |-- order_status: string (nullable = true)
+
+
+scala> ordersFiltered.show
++--------+--------------------+-----------------+------------+
+|order_id|          order_date|order_customer_id|order_status|
++--------+--------------------+-----------------+------------+
+|       3|2013-07-25 00:00:...|            12111|    COMPLETE|
+|       5|2013-07-25 00:00:...|            11318|    COMPLETE|
+|       6|2013-07-25 00:00:...|             7130|    COMPLETE|
+|       7|2013-07-25 00:00:...|             4530|    COMPLETE|
+|      15|2013-07-25 00:00:...|             2568|    COMPLETE|
+|      17|2013-07-25 00:00:...|             2667|    COMPLETE|
+|      22|2013-07-25 00:00:...|              333|    COMPLETE|
+|      26|2013-07-25 00:00:...|             7562|    COMPLETE|
+|      28|2013-07-25 00:00:...|              656|    COMPLETE|
+|      32|2013-07-25 00:00:...|             3960|    COMPLETE|
+|      35|2013-07-25 00:00:...|             4840|    COMPLETE|
+|      45|2013-07-25 00:00:...|             2636|    COMPLETE|
+|      56|2013-07-25 00:00:...|            10519|    COMPLETE|
+|      63|2013-07-25 00:00:...|             1148|    COMPLETE|
+|      65|2013-07-25 00:00:...|             5903|    COMPLETE|
+|      67|2013-07-25 00:00:...|             1406|    COMPLETE|
+|      71|2013-07-25 00:00:...|             8646|    COMPLETE|
+|      72|2013-07-25 00:00:...|             4349|    COMPLETE|
+|      76|2013-07-25 00:00:...|             6898|    COMPLETE|
+|      80|2013-07-25 00:00:...|             3007|    COMPLETE|
++--------+--------------------+-----------------+------------+
+only showing top 20 rows
+
+
+// Filter with or condition 
+// [Note: 'OR' will not work as it is case sensitive]
+scala> ordersDF.filter(ordersDF("order_status") === "COMPLETE" or ordersDF("order_status") === "CLOSED").show()
++--------+--------------------+-----------------+------------+
+|order_id|          order_date|order_customer_id|order_status|
++--------+--------------------+-----------------+------------+
+|       1|2013-07-25 00:00:...|            11599|      CLOSED|
+|       3|2013-07-25 00:00:...|            12111|    COMPLETE|
+|       4|2013-07-25 00:00:...|             8827|      CLOSED|
+|       5|2013-07-25 00:00:...|            11318|    COMPLETE|
+|       6|2013-07-25 00:00:...|             7130|    COMPLETE|
+|       7|2013-07-25 00:00:...|             4530|    COMPLETE|
+|      12|2013-07-25 00:00:...|             1837|      CLOSED|
+|      15|2013-07-25 00:00:...|             2568|    COMPLETE|
+|      17|2013-07-25 00:00:...|             2667|    COMPLETE|
+|      18|2013-07-25 00:00:...|             1205|      CLOSED|
+|      22|2013-07-25 00:00:...|              333|    COMPLETE|
+|      24|2013-07-25 00:00:...|            11441|      CLOSED|
+|      25|2013-07-25 00:00:...|             9503|      CLOSED|
+|      26|2013-07-25 00:00:...|             7562|    COMPLETE|
+|      28|2013-07-25 00:00:...|              656|    COMPLETE|
+|      32|2013-07-25 00:00:...|             3960|    COMPLETE|
+|      35|2013-07-25 00:00:...|             4840|    COMPLETE|
+|      37|2013-07-25 00:00:...|             5863|      CLOSED|
+|      45|2013-07-25 00:00:...|             2636|    COMPLETE|
+|      51|2013-07-25 00:00:...|            12271|      CLOSED|
++--------+--------------------+-----------------+------------+
+only showing top 20 rows
+
+*/
+
+/*
+ Find revenue for each day for COMPLETED and CLOSED orders
+*/
+val ordersFiltered = ordersDF.filter(ordersDF("order_status") === "COMPLETED" or ordersDF("order_status") === "CLOSED")
+
+// Create join 
+val ordersJoin = ordersFiltered.join(orderItemsDF, ordersDF("order_id") === orderItemsDF("order_item_order_id"))
+
+
+// by default spark will use 200 shuffle partitions so we should limit it
+// sqlContext.setConf("spark.sql.shuffel.partitions","2")
+
+ordersJoin.groupBy("order_date").
+  agg(sum("order_item_subtotal")).
+  show()
+
+// If sum() is not available we have to import spark funtions
+// import org.apache.spark.sql.functions._
+
+/*
+* Spark sql, Find revenue for each day for COMPLETED and CLOSED orders
+* we will use orders and order_items which are registered table using .registerTempTable()
+*/
+sqlContext.sql("select order_date, sum(order_item_subtotal) dsily_revenue from orders "+
+ "join order_items on order_item_order_id = order_id "+
+ "where order_status in ('COMPLETE', 'CLOSED') "+
+ "group by order_date").show()
+
+// if above not work we have to put 's' as prefix
+sqlContext.sql(s"select order_date, sum(order_item_subtotal) dsily_revenue from orders "+
+ "join order_items on order_item_order_id = order_id "+
+ "where order_status in ('COMPLETE', 'CLOSED') "+
+ "group by order_date").show()
+
+

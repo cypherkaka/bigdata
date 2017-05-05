@@ -26,3 +26,99 @@ start_logs
 
 # Script for stop generating logs
 stop_logs
+
+
+/*
+# Simple example from flum website
+*/
+
+1. copy given 'example.conf' fine and create new file
+- mkdir flume-ex
+- create file from example.conf and copy below text
+-------------
+# example.conf: A single-node Flume configuration
+
+# Name the components on this agent
+a1.sources = r1
+a1.sinks = k1
+a1.channels = c1
+
+# Describe/configure the source
+a1.sources.r1.type = netcat
+a1.sources.r1.bind = localhost
+a1.sources.r1.port = 44444
+
+# Describe the sink
+a1.sinks.k1.type = logger
+
+# Use a channel which buffers events in memory
+a1.channels.c1.type = memory
+a1.channels.c1.capacity = 1000
+a1.channels.c1.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+a1.sources.r1.channels = c1
+a1.sinks.k1.channel = c1
+-------------
+
+2.  execute below flume command to run flume agent
+flume-ng agent 
+\ --name a1 \
+ --conf /home/cloudera/flume-ex \
+ --conf-file /home/cloudera/flume-ex/example.conf
+
+3. As sour is netcat, we can start Netcat using 'nc <host> <port>' and add some messages
+nc 127.0.0.1 44444
+
+
+
+/*
+Multiplexing (1 source and multiple sync)  using Avro RPC
+*/
+1. Create conf file 
+cp example.comf fmp.conf
+
+2. copy folowing content 
+------------------
+# fmp.conf: Multiplexing flow, 1 source and multiple sink
+
+# Name the components on this agent  [Seprate names with space]
+fmp.sources = loggersource
+fmp.sinks = loggersink hdfssink
+fmp.channels = loggerchannel hdfschannel
+
+# Describe/configure the source  [In this case only 1 source]
+fmp.sources.loggersource.type = exec
+fmp.sources.loggersource.command = tail -F /opt/gen_logs/logs/access.log
+
+# Describe logger sink - 1
+fmp.sinks.loggersink.type = logger
+
+# Describe hdfs sink - 2
+fmp.sinks.hdfssink.type = hdfs
+fmp.sinks.hdfssink.hdfs.path = hdfs://quickstart.cloudera/user/cloudera/flume-sink
+
+
+# Channel 1 - memory
+fmp.channels.loggerchannel.type = memory
+fmp.channels.loggerchannel.capacity = 1000
+fmp.channels.loggerchannel.transactionCapacity = 100
+
+# Channel 2 - file for hdfs sink
+fmp.channels.hdfschannel.type = file
+fmp.channels.hdfschannel.capacity = 1000
+fmp.channels.hdfschannel.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+fmp.sources.loggersource.channels = loggerchannel hdfschannel
+fmp.sinks.loggersink.channel = loggerchannel
+fmp.sinks.hdfssink.channel = hdfschannel
+------------------
+
+3. Start agent
+flume-ng agent --name fmp \
+ --conf /home/cloudera/flume-ex \
+ --conf-file /home/cloudera/flume-ex/fmp.conf
+
+4. Verify data comming on screen + hdfs location
+hadoop fs -ls hdfs://quickstart.cloudera/user/cloudera/flume-sink

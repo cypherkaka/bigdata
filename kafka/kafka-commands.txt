@@ -1,0 +1,22 @@
+## --------- Kafka Details --------- ##
+
+1 Create topic
+kafka-topics --create \
+ --zookeeper quickstart.cloudera:2181 \
+ --replication-factor 1 \
+ --partitions 1 \
+ --topic test
+	
+2 List all topic
+kafka-topics --list \
+ --zookeeper quickstart.cloudera:2181
+
+4 Create producer and send message
+kafka-console-producer --broker-list quickstart.cloudera:9092 \
+ --topic test
+
+5 Create consumer and receive message
+kafka-console-consumer --bootstrap-server quickstart.cloudera:9092 \
+ --topic test \
+ --from-beginning \
+ --zookeeper quickstart.cloudera:2181

@@ -122,3 +122,66 @@ flume-ng agent --name fmp \
 
 4. Verify data comming on screen + hdfs location
 hadoop fs -ls hdfs://quickstart.cloudera/user/cloudera/flume-sink
+
+/*
+In above Multiplexing example multiple sinks require multiple channels which require lots of resources.
+
+Kafka can solve problem by distributing data to multiple subscriber.
+
+Source1 -> Kafka Queue -> Many subscriber to the Kafka Queue
+*/
+1. update fmp.conf by adding new params
+# fmp.conf: Multiplexing flow using Kafka
+# Source1 -> Kafka Queue -> Many subscriber to the Kafka Queue
+
+# Name the components on this agent  [Seprate names with space]
+fmp.sources = loggersource
+fmp.sinks = kafkasink hdfssink
+fmp.channels = kafkachannel hdfschannel
+
+# Describe/configure the source  [In this case only 1 source]
+fmp.sources.loggersource.type = exec
+fmp.sources.loggersource.command = tail -F /opt/gen_logs/logs/access.log
+
+# Describe kafka sink - 1
+fmp.sinks.kafkasink.type = org.apache.flume.sink.kafka.KafkaSink
+fmp.sinks.kafkasink.brokerList = quickstart.cloudera:9092
+fmp.sinks.kafkasink.topic = test
+
+
+# Describe hdfs sink - 2
+fmp.sinks.hdfssink.type = hdfs
+fmp.sinks.hdfssink.hdfs.path = hdfs://quickstart.cloudera/user/cloudera/flume-sink/multiplexing-using-kafka
+fmp.sinks.hdfssink.hdfs.fileType = DataStream
+fmp.sinks.hdfssink.hdfs.rollInterval = 120
+fmp.sinks.hdfssink.hdfs.rollSize = 10485760
+fmp.sinks.hdfssink.hdfs.rollCount = 30
+fmp.sinks.hdfssink.hdfs.filePrefix = retail
+fmp.sinks.hdfssink.hdfs.fileSuffix = .txt
+fmp.sinks.hdfssink.hdfs.inUseSuffix = .tmp
+fmp.sinks.hdfssink.hdfs.useLocalTimeStamp = true 
+
+
+# Channel 1 - memory
+fmp.channels.kafkachannel.type = memory
+fmp.channels.kafkachannel.capacity = 1000
+fmp.channels.kafkachannel.transactionCapacity = 100
+
+# Channel 2 - file for hdfs sink
+fmp.channels.hdfschannel.type = file
+fmp.channels.hdfschannel.capacity = 1000
+fmp.channels.hdfschannel.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+fmp.sources.loggersource.channels = kafkachannel hdfschannel
+fmp.sinks.kafkasink.channel = kafkachannel
+fmp.sinks.hdfssink.channel = hdfschannel
+
+
+2. Start flume-ng agent
+flume-ng agent --name fmp \
+ --conf /home/cloudera/flume-ex \
+ --conf-file /home/cloudera/flume-ex/fmp.conf
+
+4. Verify data comming on screen + hdfs location
+hadoop fs -ls hdfs://quickstart.cloudera/user/cloudera/flume-sink

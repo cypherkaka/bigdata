@@ -3,6 +3,9 @@
 https://sqoop.apache.org/docs/1.99.7/index.html
 https://sqoop.apache.org/docs/1.4.4/SqoopUserGuide.html
 
+# To send notificatoin after command finish
+<Command> && DISPLAY=:0 sudo -u cloudera notify-send "Done"
+sqoop eval && DISPLAY=:0 sudo -u cloudera notify-send "Done"
 
 #Summary
 Apache Sqoop is a tool designed for efficiently transferring data betweeen structured, semi-structured and unstructured data sources.
@@ -74,6 +77,7 @@ sqoop import \
   --num-mappers 4
 
 # Import single existing table into Hive
+# Need to create 'sqoop_import' database in hive before this command
 sqoop import \
   --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
   --username retail_dba \
@@ -120,7 +124,7 @@ sqoop import \
   --hive-import \
   --hive-table departments_null_test \
   --create-hive-table \
-  --outdir java_files \
+  --outdir java_files \      -- outdir is local directory location not HDFS
   --null-string NIL_VAL \
   --null-non-string NIL_NON_VAL
 
@@ -178,6 +182,7 @@ sqoop export \
 
 # Export single table with updated value
 # [in this case --export-dir already contains export.csv file with updated recoeds ]
+# [--update-mode will only work with --update-key]
   sqoop export \
     --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
     --username retail_dba \
@@ -208,7 +213,7 @@ sqoop import-all-tables \
 [cloudera@quickstart departments]$ hadoop fs -get /user/hive/warehouse/retail_stage.db/departments
 
 3. extract schema using avro-tools
-[cloudera@quickstart departments]$ avro-tools getschema part-m-00000.avro > departments_schema.svsc
+[cloudera@quickstart departments]$ avro-tools getschema part-m-00000.avro > departments_schema.avsc
 
 -- extract json data to json file
 [cloudera@quickstart departments]$ avro-tools tojson part-m-00000.avro > departments.json

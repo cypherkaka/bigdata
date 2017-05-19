@@ -74,6 +74,11 @@ res17: String = World
 */
 
 /*
+Start spark shell with arguments
+*/
+spark-shell --master yarn-client --conf spark.ui.port=23123
+
+/*
 Build jar file using sbt
 */
 download sbt and set environment variable
@@ -970,3 +975,118 @@ sqlContext.sql(s"select order_date, sum(order_item_subtotal) dsily_revenue from 
  "group by order_date").show()
 
 
+
+/*
+Create SBT project and package it to jar file
+*/
+
+1. Create dir structure
+[cloudera@quickstart NetworkWordCount]$ mkdir -p src/main/scala
+
+
+2. CD to source directory
+[cloudera@quickstart NetworkWordCount]$ cd src/main/scala
+
+3. Create scala file
+gedit NetworkWordCount.scala
+---------------- Content of scala file -------------------
+object NetworkWordCount extends App {
+    println("NetworkWordCount - Part 1 ")
+}
+---------------------------------------------------------
+
+4. Compile sbt project using 'sbt compile'
+[cloudera@quickstart scala]$ sbt compile
+[info] Set current project to scala (in build file:/home/cloudera/NetworkWordCount/src/main/scala/)
+[info] Updating {file:/home/cloudera/NetworkWordCount/src/main/scala/}scala...
+[info] Resolving org.fusesource.jansi#jansi;1.4 ...
+[info] Done updating.
+[info] Compiling 1 Scala source to /home/cloudera/NetworkWordCount/src/main/scala/target/scala-2.10/classes...
+[info] 'compiler-interface' not yet compiled for Scala 2.10.6. Compiling...
+[info]   Compilation completed in 17.09 s
+
+5. Run compiled package using 'sbt run'
+[cloudera@quickstart scala]$ sbt run
+[info] Set current project to scala (in build file:/home/cloudera/NetworkWordCount/src/main/scala/)
+[info] Running NetworkWordCount 
+NetworkWordCount - Part 1 
+[success] Total time: 1 s, completed May 9, 2017 1:15:26 PM
+
+6. Package project to jar file using 'sbt package'
+[cloudera@quickstart scala]$ sbt package
+[info] Set current project to scala (in build file:/home/cloudera/NetworkWordCount/src/main/scala/)
+[info] Packaging /home/cloudera/NetworkWordCount/src/main/scala/target/scala-2.10/scala_2.10-0.1-SNAPSHOT.jar ...
+[info] Done packaging.
+[success] Total time: 1 s, completed May 9, 2017 1:16:11 PM
+
+
+/*
+Create sbt structure from scrat
+*/
+1. Create empty structure of given project product_name
+
+sbt new sbt/scala-seed.g8			
+
+[cloudera@quickstart NetworkWordCount]$ sbt new sbt/scala-seed.g8
+[info] Set current project to networkwordcount (in build file:/home/cloudera/NetworkWordCount/)
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+
+Minimum Scala build. 
+
+name [My Something Project]: WordCount     
+
+Template applied in ./wordcount
+
+2. cd to new directory
+cd ./wordcount
+
+3. enter in sbt console and execute 'compile' or 'run' or 'package'
+[cloudera@quickstart wordcount]$ sbt
+[info] Loading project definition from /home/cloudera/NetworkWordCount/wordcount/project
+[info] Updating {file:/home/cloudera/NetworkWordCount/wordcount/project/}wordcount-build...
+[info] Resolving org.fusesource.jansi#jansi;1.4 ...
+[info] Done updating.
+[info] Compiling 1 Scala source to /home/cloudera/NetworkWordCount/wordcount/project/target/scala-2.10/sbt-0.13/classes...
+[info] Set current project to Hello (in build file:/home/cloudera/NetworkWordCount/wordcount/)
+> run
+[info] Updating {file:/home/cloudera/NetworkWordCount/wordcount/}root...
+[info] Resolving jline#jline;2.14.1 ...
+[info] Done updating.
+[info] Compiling 1 Scala source to /home/cloudera/NetworkWordCount/wordcount/target/scala-2.12/classes...
+[info] 'compiler-interface' not yet compiled for Scala 2.12.1. Compiling...
+[info] Resolving org.scala-sbt#interface;0.13.13 ...
+[trace] Stack trace suppressed: run last compile:compileIncremental for the full output.
+[error] (compile:compileIncremental) java.lang.UnsupportedClassVersionError: scala/tools/nsc/Main : Unsupported major.minor version 52.0
+[error] Total time: 1 s, completed May 9, 2017 1:40:16 PM
+
+
+
+/*
+Create SparkStreamingContext  from exis SparkContext
+*/
+
+import org.apache.spark.streaming._
+
+val sc = ...                // existing SparkContext
+val ssc = new StreamingContext(sc, Seconds(1))
+
+/*
+To create StreamingContext 
+- stop existing spark context
+- create streaming context
+*/
+sc.stop()
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming.StreamingContext
+import org.apache.spark.streaming.Seconds
+val conf = new SparkConf().setAppName("Spark Streaming")
+val ssc = new StreamingContext(conf, Seconds(30))
+val lines = ssc.socketTextStream("localhost", 44444)
+val words = lines.flatMap(_.split(" "))
+val pairs = words.map(word => (word, 1))
+val wordCounts = pairs.reduceByKey(_ + _)
+wordCounts.print()
+ssc.start()
+ssc.awaitTermination()

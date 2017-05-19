@@ -21,10 +21,10 @@ telnet localhost 44444
 
 #Explore documentaion for Sources, Sinks, Channels
 
-# Script to generate logs
+# Script to generate logs [can directly access]
 start_logs
 
-# Script for stop generating logs
+# Script for stop generating logs [can directly access]
 stop_logs
 
 
@@ -185,3 +185,95 @@ flume-ng agent --name fmp \
 
 4. Verify data comming on screen + hdfs location
 hadoop fs -ls hdfs://quickstart.cloudera/user/cloudera/flume-sink
+
+
+/*
+SparkStreaming using flume as sink
+
+*/
+1. copy required 3 plugin jar files to flume[search integraion on spark-programming-guide]
+ref: https://spark.apache.org/docs/1.6.2/streaming-flume-integration.html
+
+- find flume locatio by 'whereis flume-ng' and copy all 3 jars using 'wget <url>'
+
+2. Make copy of existing fmp.conf and create new one fkmp.conf and edit  ~/flume-ex/fkmp.conf
+
+# fsmp.conf: Multiplexing flow using spark
+# Source1 -> spark Queue -> Many subscriber to the spark Queue
+
+# Name the components on this agent  [Seprate names with space]
+fsmp.sources = loggersource
+fsmp.sinks = sparksink hdfssink
+fsmp.channels = sparkchannel hdfschannel
+
+# Describe/configure the source  [In this case only 1 source]
+fsmp.sources.loggersource.type = exec
+fsmp.sources.loggersource.command = tail -F /opt/gen_logs/logs/access.log
+
+# Describe spark sink - 1
+fsmp.sinks.sparksink.type = org.apache.spark.streaming.flume.sink.SparkSink
+fsmp.sinks.sparksink.hostname = quickstart.cloudera
+fsmp.sinks.sparksink.port = 19999
+
+# Describe hdfs sink - 2
+fsmp.sinks.hdfssink.type = hdfs
+fsmp.sinks.hdfssink.hdfs.path = hdfs://quickstart.cloudera/user/cloudera/flume-sink/multiplexing-using-spark
+fsmp.sinks.hdfssink.hdfs.fileType = DataStream
+fsmp.sinks.hdfssink.hdfs.rollInterval = 120
+fsmp.sinks.hdfssink.hdfs.rollSize = 10485760
+fsmp.sinks.hdfssink.hdfs.rollCount = 30
+fsmp.sinks.hdfssink.hdfs.filePrefix = retail
+fsmp.sinks.hdfssink.hdfs.fileSuffix = .txt
+fsmp.sinks.hdfssink.hdfs.inUseSuffix = .tmp
+fsmp.sinks.hdfssink.hdfs.useLocalTimeStamp = true 
+
+
+# Channel 1 - memory
+fsmp.channels.sparkchannel.type = memory
+fsmp.channels.sparkchannel.capacity = 1000
+fsmp.channels.sparkchannel.transactionCapacity = 100
+
+# Channel 2 - file for hdfs sink
+fsmp.channels.hdfschannel.type = file
+fsmp.channels.hdfschannel.capacity = 1000
+fsmp.channels.hdfschannel.transactionCapacity = 100
+
+# Bind the source and sink to the channel
+fsmp.sources.loggersource.channels = sparkchannel hdfschannel
+fsmp.sinks.sparksink.channel = sparkchannel
+fsmp.sinks.hdfssink.channel = hdfschannel
+
+
+3. Start flume-ng with folliwng command
+
+flume-ng agent --name fsmp \
+ --conf /home/cloudera/flume \
+ --conf-file /home/cloudera/flume/fsmp.conf
+
+4. Start spark-shell and execute following commands
+import org.apache.spark.SparkConf
+import org.apache.spark.streaming._
+import org.apache.spark.streaming.flume._
+import org.apache.spark.util.IntParam
+
+/* 
+When we start spark-shell we already have 'sc' object so we can not create another SparkContext without stopping existing one.
+	To avoide errors we can use existing 'sc' amd set required parameters.
+*/ 
+sc.getConf.setMaster("local[2]").setAppName("NetworkWordCount").set("spark.ui.port", "44040" )
+
+// Create a Streaming context with 2 second batch interval using existing 'sc'
+val ssc = new StreamingContext(sc, Seconds(10) )
+
+/* Create a flume stream that polls the Spark Sink running in a Flume agent
+Host and port must be same that we set in flume.conf file
+fsmp.sinks.sparksink.hostname = "quickstart.cloudera"
+fsmp.sinks.sparksink.port = 19999
+*/
+val stream = FlumeUtils.createPollingStream(ssc, "quickstart.cloudera", 19999)
+
+// Print out the count of events received from this server in each batch
+stream.count().map(cnt => "Received " + cnt + " flume events." ).print()
+
+ssc.start()
+ssc.awaitTermination()

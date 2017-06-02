@@ -132,8 +132,8 @@ sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[Text], class
 /*
 Reading and saving JSon from SQLContext
 */
-import org.apache.spark.sql.hive.HiveContext
-val sqlContext = new HiveContext(sc)
+import org.apache.spark.sql.hive.HiveContext   // No need to import, it is available
+val sqlContext = new HiveContext(sc)	// No need to create sqlContext
 val departmentsRDD = sqlContext.sql("select * from departments")
 departmentsRDD.collect().foreach(println)
 
@@ -263,8 +263,8 @@ Join data sets using hive and sql
 */
 
 // For HiveContext [used when we have hive tables]
-import org.apache.spark.sql.hive.HiveContext
-val sqlContext = new HiveContext(sc)
+import org.apache.spark.sql.hive.HiveContext  // not required, as org.apache.spark.sql.SQLContext = org.apache.spark.sql.hive.HiveContext@6bd028f2
+val sqlContext = new HiveContext(sc)  // Not required
 
 // For SQLContext we also require Row [used to create temp tables]
 import org.apache.spark.sql.SQLContext
@@ -280,6 +280,22 @@ sqlContext.sql("select o.order_date, round(sum(oi.order_item_subtotal), 2), coun
 from orders o join order_items oi on o.order_id = oi.order_item_order_id 
 group by o.order_date 
 order by o.order_date").take(10).foreach(println)
+
+// NOTE:  Above approach is lengthy and short approach is available
+val productsRDD = sc.textFile("/user/cloudera/sqoop_import/products")
+//productsRDD: org.apache.spark.rdd.RDD[String] = /user/cloudera/sqoop_import/products MapPartitionsRDD[10] at textFile at <console>:27
+
+val productsDF = productsRDD.toDF
+//productsDF: org.apache.spark.sql.DataFrame = [_1: string]
+
+sqlContext.sql("set spark.sql.shuffel.partitions=10")
+//res12: org.apache.spark.sql.DataFrame = [key: string, value: string]
+
+sqlContext.sql("select * from products_temp limit 4").collect.foreach(println)
+//[1,2,Quest Q64 10 FT. x 10 FT. Slant Leg Instant U,,59.98,http://images.acmesports.sports/Quest+Q64+10+FT.+x+10+FT.+Slant+Leg+Instant+Up+Canopy]
+//[2,2,Under Armour Men's Highlight MC Football Clea,,129.99,http://images.acmesports.sports/Under+Armour+Men%27s+Highlight+MC+Football+Cleat]
+//[3,2,Under Armour Men's Renegade D Mid Football Cl,,89.99,http://images.acmesports.sports/Under+Armour+Men%27s+Renegade+D+Mid+Football+Cleat]
+//[4,2,Under Armour Men's Renegade D Mid Football Cl,,89.99,http://images.acmesports.sports/Under+Armour+Men%27s+Renegade+D+Mid+Football+Cleat]
 
 
 /**
@@ -368,7 +384,11 @@ mysql> describe order_items;
 // Total revenue 
 val orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items")
 val totalRevenue = orderItemsRDD.map(o => o.split(",")(4).toFloat).reduce((a,v) => a+v)
+BigDecimal(totalRevenue)
+//res15: scala.math.BigDecimal = 34326256
+
 printf("%f", totalRevenue)
+//34326256.000000
 
 // Average[we can not take from Orders as they may have Canceled orders]
 // Help: We can durectly use '_.' instead of defining 'rec =>'
@@ -412,7 +432,18 @@ Aggregating Data by key
 
 // Count of orders for each status using countByKey
 val ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders")
-ordersRDD.map(rec => (rec.split(",")(3), rec)).countByKey().foreach(println)
+ordersRDD.map(rec => (rec.split(",")(3), 1)).countByKey.foreach(println)
+/*
+(PAYMENT_REVIEW,729)                                                            
+(CLOSED,7556)
+(SUSPECTED_FRAUD,1558)
+(PROCESSING,8275)
+(COMPLETE,22899)
+(PENDING,7610)
+(PENDING_PAYMENT,15030)
+(ON_HOLD,3798)
+(CANCELED,1428)
+*/
 
 /* Validate in sql
 select order_status, count(1) from orders group by order_status;

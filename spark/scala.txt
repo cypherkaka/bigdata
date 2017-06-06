@@ -288,6 +288,9 @@ val productsRDD = sc.textFile("/user/cloudera/sqoop_import/products")
 val productsDF = productsRDD.toDF
 //productsDF: org.apache.spark.sql.DataFrame = [_1: string]
 
+productsDF.registerTempTable("products_temp") // retister table in memory
+productsDF.saveAsTable("sqoop_import.products_temp_saved") // will create table with all data
+
 sqlContext.sql("set spark.sql.shuffel.partitions=10")
 //res12: org.apache.spark.sql.DataFrame = [key: string, value: string]
 
@@ -316,6 +319,7 @@ order_customer_id: Int,
 order_status: String
 )
 
+// Note: Alternate approach is .DF and then register temptable
 val ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders").
 map(o => o.split(",")).
 map(o => Orders(o(0).toInt, o(1), o(2).toInt, o(3))).toDF()
@@ -337,6 +341,7 @@ order_item_subtotal: Float,
 order_item_product_price: Float
 )
 
+// Note: Alternate approach is .DF and then register temptable
 val orderItemsRDD = sc.textFile("/user/cloudera/sqoop_import/order_items").
 map(rec => rec.split(",")).
 map(oi => OrderItems(oi(0).toInt, oi(1).toInt, oi(2).toInt, oi(3).toInt, oi(4).toFloat, oi(5).toFloat)).toDF()
@@ -534,9 +539,14 @@ val topCustomerPerDaybyRevenue = revenuePerDayPerCustomerMap.reduceByKey((x, y) 
 Using HiveContext, find customer ID for max revenue for each day
 */
 import org.apache.spark.sql.hive.HiveContext
-val hiveContext = new HiveContext(sc)
-hiveContext.sql("set spark.sql.shuffle.partitions=10");
 
+/*  Note: Default sqlContext is of type HiveContext so no need to create new HiveContext
+scala> sqlContext
+res3: org.apache.spark.sql.SQLContext = org.apache.spark.sql.hive.HiveContext@1e67f10d
+*/
+val hiveContext = new HiveContext(sc)
+
+hiveContext.sql("set spark.sql.shuffle.partitions=10");
 hiveContext.sql("select o.order_date, sum(oi.order_item_subtotal)/count(distinct oi.order_item_order_id) from orders o join order_items oi on o.order_id = oi.order_item_order_id group by o.order_date order by o.order_date").collect().foreach(println)
 
 
@@ -736,6 +746,13 @@ val ordersDFTmp = sc.textFile("/user/cloudera/sqoop_import/orders").
   	val r = rec.split(",")
   	Orders(r(0).toInt, r(1), r(2).toInt, r(3))
   }).toDF
+
+/*
+Note: Alternatively we can use
+val ordersDF = sc..textFile("/user/cloudera/sqoop_import/orders").toDF
+scala> ordersDF
+res9: org.apache.spark.sql.DataFrame = [_1: string]
+*/  
 
 /* O/P
 scala> val ordersDF = sc.textFile("/user/cloudera/sqoop_import/orders").

@@ -78,6 +78,7 @@ sqoop import \
 
 # Import single existing table into Hive
 # Need to create 'sqoop_import' database in hive before this command
+# Error: FAILED: SemanticException [Error 10072]: Database does not exist: sqoop_import
 sqoop import \
   --connect "jdbc:mysql://quickstart.cloudera:3306/retail_db" \
   --username retail_dba \

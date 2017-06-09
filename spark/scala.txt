@@ -121,13 +121,16 @@ val dataRDD = sc.textFile("/user/cloudera/sqoop_import/departments")
 dataRDD.collect.foreach(println)
 
 dataRDD.map(rec => (NullWritable.get(), rec)).saveAsSequenceFile("/user/cloudera/scalaspark/departmentsSeq")
-dataRDD.map(rec => (rec.split(",")(0), rec.split(",")(1))).saveAsSequenceFile("/user/cloudera/scalaspark/departmentsSeq")
+.map(rec => (rec.split(",")(0), rec.split(",")(1))).saveAsSequenceFile("/user/cloudera/scalaspark/departmentsSeq")
 
 // reading sequence file with NullWritable as key
 sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[NullWritable], classOf[Text]).map(rec => rec.toString()).collect().foreach(println)
 
 // reading sequence file with Text as key
 sc.sequenceFile("/user/cloudera/scalaspark/departmentsSeq", classOf[Text], classOf[Text]).map(rec => rec.toString()).collect().foreach(println)
+
+// Alternate way is use default datatype classOf[String] classOf[Int]
+scala> sc.sequenceFile("/user/cloudera/tmp_import/department_seq", classOf[String], classOf[String]).collect.foreach(println)
 
 /*
 Reading and saving JSon from SQLContext
@@ -306,30 +309,31 @@ sqlContext.sql("select * from products_temp limit 4").collect.foreach(println)
 // [Read HDFS and create temp tables and execute query against it]
 */
 
-import org.apache.spark.sql.SQLContext
-import org.apache.spark.sql.Row 
-val sqlContext = new SQLContext(sc)
-sqlContext.sql("set spark.sql.shuffel.partitions=10")
+scala> sqlContext.sql("set spark.sql.shuffel.partitions=10")
+res0: org.apache.spark.sql.DataFrame = [key: string, value: string]
 
-//Create Orders
-case class Orders(
-order_id: Int,
-order_date: String,
-order_customer_id: Int,
-order_status: String
-)
+scala> case class Orders(
+     | order_id: Int,
+     | order_date: String,
+     | order_customer_id: Int,
+     | order_status: String
+     | )
+defined class Orders
 
-// Note: Alternate approach is .DF and then register temptable
-val ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders").
-map(o => o.split(",")).
-map(o => Orders(o(0).toInt, o(1), o(2).toInt, o(3))).toDF()
+scala> val ordersRDD = sc.textFile("/user/cloudera/sqoop_import/orders").
+     | map(o => o.split(",")).
+     | map(o => Orders(o(0).toInt, o(1), o(2).toInt, o(3))).toDF()
+ordersRDD: org.apache.spark.sql.DataFrame = [order_id: int, order_date: string, order_customer_id: int, order_status: string]
 
-// required to register temp tables
-import sqlContext.implicits._
-ordersRDD.registerTempTable("orders")
+scala> ordersRDD.registerTempTable("orders")
 
-// verify records
-sqlContext.sql("select * from orders limit 10").collect().foreach(println)
+scala> ordersRDD.registerTempTable("orders_tmp_t1")
+
+scala> sqlContext.sql("select * from orders_tmp_t1 limit 4").collect.foreach(println)
+[1,2013-07-25 00:00:00,11599,CLOSED]
+[2,2013-07-25 00:00:00,256,PENDING_PAYMENT]
+[3,2013-07-25 00:00:00,12111,COMPLETE]
+[4,2013-07-25 00:00:00,8827,CLOSED]
 
 // Create OrderItems
 case class OrderItems(
@@ -455,7 +459,7 @@ select order_status, count(1) from orders group by order_status;
 */
 
 // Count of orders for each status using groupByKey
-// Help: groupByKey is not usng combiner internally
+// Help: groupByKey is not use combiner internally
 val ordersMap = ordersRDD.map(rec => (rec.split(",")(3), 1))
 ordersMap.groupByKey().map(rec => (rec._1, rec._2.sum)).collect.foreach(println)
 
@@ -544,7 +548,7 @@ import org.apache.spark.sql.hive.HiveContext
 scala> sqlContext
 res3: org.apache.spark.sql.SQLContext = org.apache.spark.sql.hive.HiveContext@1e67f10d
 */
-val hiveContext = new HiveContext(sc)
+val hiveContext = new HiveContext(sc)		// Not required
 
 hiveContext.sql("set spark.sql.shuffle.partitions=10");
 hiveContext.sql("select o.order_date, sum(oi.order_item_subtotal)/count(distinct oi.order_item_order_id) from orders o join order_items oi on o.order_id = oi.order_item_order_id group by o.order_date order by o.order_date").collect().foreach(println)

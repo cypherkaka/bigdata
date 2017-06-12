@@ -1027,6 +1027,40 @@ sqlContext.sql(s"select order_date, sum(order_item_subtotal) dsily_revenue from 
  "group by order_date").show()
 
 
+// Dataframe: Write and read different format(parquet, json,)
+case class Orders(
+  order_id: Int,
+  order_date: String,
+  order_customer_id: Int,
+  order_status: String
+)
+
+scala> val ordersDF = ordersRDD.map(r => {
+		val t = r.split(",")
+		Orders(t(0).toInt, t(1), t(2).toInt, t(3))
+		}).toDF
+
+scala> ordersDF.registerTempTable("orders_tmp")
+scala> val completeOrdersDF = ordersDF.filter(ordersDF("order_status") === "COMPLETE")
+
+// Data compression(uncompressed, snappy, gzip, lzo.)
+scala> sqlContext.setConf("spark.sql.parquet.compression.codec","gzip") // gzip is default for parquet
+scala> sqlContext.setConf("spark.sql.avro.compression.codec","snappy")  // snappy is default for avro
+scala> sqlContext.setConf("spark.sql.orc.compression.codec","snappy")
+
+// Write
+scala> completeOrdersDF.write.parquet("/user/cloudera/orders.complete.parquet")
+scala> completeOrdersDF.write.json("/user/cloudera/orders.complete.json")
+//For avro file we have to import 
+scala> import com.databricks.spark.avro._
+scala> completeOrdersDF.write.avro("/user/cloudera/orders.complete.avro")
+
+
+// Read (will take care of compress and uncompress data, no need to uncompress)
+scala> sqlContext.read.parquet("/user/cloudera/orders.complete.parquet").collect.take(5).foreach(println)
+scala> sqlContext.read.json("/user/cloudera/orders.complete.json").collect.take(5).foreach(println)
+scala> sqlContext.read.avro("/user/cloudera/orders.complete.json").collect.take(5).foreach(println)
+
 
 /*
 Create SBT project and package it to jar file
